@@ -21,5 +21,4 @@ Na polecenie Dyrektora (sygnał 1) dany lekarz bada bieżącego pacjenta i końc
 Na polecenie Dyrektora (sygnał 2) wszyscy pacjenci natychmiast opuszczają budynek.
 Napisz procedury Dyrektor, Rejestracja, Lekarz i Pacjent symulujące działanie przychodni.
 
-[Github-przychodnia](https://github.com/Michal-Brzezinski/Przychodnia)
-
+[Github-przychodnia] (https://github.com/Michal-Brzezinski/Przychodnia)
