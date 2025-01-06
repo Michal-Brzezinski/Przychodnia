@@ -20,6 +20,7 @@ typedef struct {
 } Patient;
 
 
+
 // =============== FUNKCJA OPISUJACA ZACHOWANIE PACJENTA ===============
 
 
@@ -38,4 +39,33 @@ void patient_process(Patient patient) {
     }
 
     exit(0); // Proces pacjenta konczy dzialanie
+}
+
+
+
+// ================= FUNKCJA GENERUJACA PACJENTOW =================
+
+
+void generate_patients(int num_patients) {
+    for (int i = 0; i < num_patients; i++) {
+        Patient patient;
+        patient.id = i + 1;
+        patient.is_vip = rand() % 2; // 50% szans na bycie VIP
+        patient.age = rand() % 100 + 1; // Wiek od 1 do 100 lat
+
+        pid_t pid = fork();
+        if (pid == 0) {
+            // Proces potomny (pacjent)
+            patient_process(patient);
+        } else if (pid < 0) {
+            perror("BLAD FORK");
+            exit(1);
+        }
+
+        // Mala przerwa przed generowaniem kolejnego pacjenta
+        usleep(50000); // 50 ms
+    }
+
+    // Oczekiwanie na zakonczenie wszystkich procesow pacjentow
+    while (wait(NULL) > 0);
 }
