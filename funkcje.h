@@ -5,6 +5,7 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <semaphore.h>
+#include <errno.h>
 
 #define MAX_PATIENTS 100 // Maksymalna liczba pacjentow do wygenerowania w ciagu dnia
 #define BUILDING_CAPACITY 50 // Maksymalna liczba pacjentow w przychodni
@@ -35,7 +36,7 @@ void patient_process(Patient patient) {
         printf("Pacjent %d opuszcza budynek.\n", patient.id);
         sem_post(&building_sem); // Zwalnianie miejsca w budynku
     } else {
-        printf("Pacjent %d nie mogł wejsc do budynku - brak miejsca.\n", patient.id);
+        printf("Pacjent %d nie mogl wejsc do budynku - brak miejsca.\n", patient.id);
     }
 
     exit(0); // Proces pacjenta konczy dzialanie
@@ -69,3 +70,4 @@ void generate_patients(int num_patients) {
     // Oczekiwanie na zakonczenie wszystkich procesow pacjentow
     while (wait(NULL) > 0);
 }
+
