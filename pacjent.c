@@ -4,6 +4,10 @@
 key_t building_key;
 int building_sem_id;
 
+// Klucz i identyfikator kolejki komunikatów
+key_t queue_key;
+int queue_id;
+
 void initialize_semaphores() {
     building_key = ftok(".", 'B');  // utworzenie klucza
     if (building_key == -1) {
@@ -30,6 +34,28 @@ void cleanup_semaphores() {     // usuniecie zbioru semaforow
     }
 }
 
+
+void initialize_message_queue() {
+    queue_key = ftok(".", 'Q');  // Utworzenie klucza kolejki
+    if (queue_key == -1) {
+        perror("Błąd ftok (kolejka)");
+        exit(1);
+    }
+
+    queue_id = msgget(queue_key, IPC_CREAT | 0666);  // Utworzenie kolejki
+    if (queue_id == -1) {
+        perror("Błąd msgget");
+        exit(1);
+    }
+}
+
+void cleanup_message_queue() {
+    if (msgctl(queue_id, IPC_RMID, NULL) == -1) {
+        perror("Błąd msgctl (usuwanie kolejki)");
+    }
+}
+
+
 void patient_process(Patient patient) {
     struct sembuf sem_op;
 
@@ -44,6 +70,29 @@ void patient_process(Patient patient) {
     if (semop(building_sem_id, &sem_op, 1) == 0) {
         printf("Pacjent %d wszedł do budynku.\n", patient.id);
         sleep(rand() % 3 + 1); // Symulacja czasu spędzonego w budynku
+
+        // Wysyłanie wiadomości do kolejki o rejestracji pacjenta
+        Message message;
+        message.type = (patient.is_vip) ? 1 : 2;  // VIP mają wyższy priorytet
+        message.id = patient.id;
+        message.age = patient.age;
+        message.is_vip = patient.is_vip;
+
+        if (msgsnd(queue_id, &message, sizeof(message) - sizeof(long), 0) == -1) {
+            perror("Błąd wysyłania wiadomości do kolejki");
+        } else {
+            printf("Pacjent %d wysłał wiadomość do kolejki o rejestracji.\n", patient.id);
+        }
+
+        // Oczekiwanie na potwierdzenie rejestracji
+        Confirmation confirmation;
+        if (msgrcv(queue_id, &confirmation, sizeof(confirmation) - sizeof(long), patient.id, 0) == -1) {
+            perror("Błąd odbierania potwierdzenia rejestracji");
+        } else {
+            printf("Pacjent %d otrzymał potwierdzenie rejestracji.\n", patient.id);
+        }
+
+
         printf("Pacjent %d opuszcza budynek.\n", patient.id);
 
         // Zwalnianie miejsca w budynku
