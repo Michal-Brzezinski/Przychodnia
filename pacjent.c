@@ -7,26 +7,26 @@ int building_sem_id;
 void initialize_semaphores() {
     building_key = ftok(".", 'B');  // utworzenie klucza
     if (building_key == -1) {
-        perror("Blad ftok");
+        perror("Błąd ftok");
         exit(1);
     }
 
     // utworzenie zbioru semaforow i pobranie identyfikator
     building_sem_id = semget(building_key, 1, IPC_CREAT | 0666);    
     if (building_sem_id == -1) {
-        perror("Blad semget");
+        perror("Błąd semget");
         exit(1);
     }
 
     if (semctl(building_sem_id, 0, SETVAL, BUILDING_CAPACITY) == -1) {  // inicjalizacja semafora
-        perror("Blad semctl (SETVAL)");
+        perror("Błąd semctl (SETVAL)");
         exit(1);
     }
 }
 
 void cleanup_semaphores() {     // usuniecie zbioru semaforow
     if (semctl(building_sem_id, 0, IPC_RMID) == -1) {
-        perror("Blad semctl (IPC_RMID)");
+        perror("Błąd semctl (IPC_RMID)");
     }
 }
 
