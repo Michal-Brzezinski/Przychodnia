@@ -12,10 +12,12 @@
 #include <string.h>
 #include <sys/msg.h>
 
-#define MAX_PATIENTS 100 // Maksymalna liczba pacjentów do wygenerowania w ciągu dnia
+#define MAX_PATIENTS 100 // Maksymalna liczba pacjentów w przychodni (N)- dać do funkcji przychodni
 #define BUILDING_CAPACITY 50 // Maksymalna liczba pacjentów w przychodni
 #define MAX_ADMISSION 3 // Maksymalna liczba osób do zarejestrowania
 #define HOW_MUCH_PATIENTS 3 // Ilu pacjentów wygenerować
+
+extern time_t Tp, Tk; // globalne zmienne godzin pracy przychodni (póki co czas w którym generowani są pacjenci)  
 
 // Klucz i identyfikator semafora
 extern key_t building_key;
