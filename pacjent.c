@@ -56,60 +56,62 @@ void cleanup_message_queue() {
 }
 
 
+// Proces pacjenta
 void patient_process(Patient patient) {
     struct sembuf sem_op;
+    Message msg;
+    Confirmation conf;
 
-    printf("Pacjent %d (VIP: %d, Wiek: %d) próbuje wejść do budynku.\n",
-           patient.id, patient.is_vip, patient.age);
+    printf("Pacjent %d (VIP: %d, Wiek: %d) próbuje wejść do budynku.\n", patient.id, patient.is_vip, patient.age);
 
     // Próba wejścia do budynku
     sem_op.sem_num = 0;
     sem_op.sem_op = -1; // Opuszczenie semafora
-    sem_op.sem_flg = IPC_NOWAIT;
+    sem_op.sem_flg = 0; // Zablokuj jeśli brak zasobów
 
     if (semop(building_sem_id, &sem_op, 1) == 0) {
         printf("Pacjent %d wszedł do budynku.\n", patient.id);
-        sleep(rand() % 3 + 1); // Symulacja czasu spędzonego w budynku
 
-        // Wysyłanie wiadomości do kolejki o rejestracji pacjenta
-        Message message;
-        message.type = (patient.is_vip) ? 1 : 2;  // VIP mają wyższy priorytet
-        message.id = patient.id;
-        message.age = patient.age;
-        message.is_vip = patient.is_vip;
+        // Wysłanie wiadomości do kolejki
+        msg.type = patient.is_vip ? 1 : 2; // VIP ma wyższy priorytet
+        msg.id = patient.id;
+        msg.age = patient.age;
+        msg.is_vip = patient.is_vip;
 
-        if (msgsnd(queue_id, &message, sizeof(message) - sizeof(long), 0) == -1) {
-            perror("Błąd wysyłania wiadomości do kolejki");
-        } else {
-            printf("Pacjent %d wysłał wiadomość do kolejki o rejestracji.\n", patient.id);
+        if (msgsnd(queue_id, &msg, sizeof(Message) - sizeof(long), 0) == -1) {
+            perror(" Błąd wysyłania wiadomości do kolejki\n");
+            exit(1);
         }
 
         // Oczekiwanie na potwierdzenie rejestracji
-        Confirmation confirmation;
-        if (msgrcv(queue_id, &confirmation, sizeof(confirmation) - sizeof(long), patient.id, 0) == -1) {
-            perror("Błąd odbierania potwierdzenia rejestracji");
-        } else {
-            printf("Pacjent %d otrzymał potwierdzenie rejestracji.\n", patient.id);
+        while (1) {
+            if (msgrcv(queue_id, &conf, sizeof(Confirmation) - sizeof(long), patient.id, 0) > 0) {
+                printf("Pacjent %d został zarejestrowany.\n", patient.id);
+                break;
+            } else if (errno != EINTR) {
+                perror(" Błąd odbierania potwierdzenia rejestracji\n");
+                break;
+            }
         }
 
-
+        // Opuszczanie budynku
         printf("Pacjent %d opuszcza budynek.\n", patient.id);
-
-        // Zwalnianie miejsca w budynku
-        sem_op.sem_op = 1; // Podniesienie semafora
+        sem_op.sem_op = 1; // Zwalnianie miejsca w semaforze
         if (semop(building_sem_id, &sem_op, 1) == -1) {
-            perror("Błąd semop (podniesienie)");
+            perror(" Błąd semop (zwolnienie)\n");
         }
-    } else {
+    } 
+    else {
         printf("Pacjent %d nie mógł wejść do budynku - brak miejsca.\n", patient.id);
     }
 
-    exit(0); // Proces pacjenta kończy działanie
+    exit(0);
 }
 
 void generate_patients(int num_patients) {
     for (int i = 0; i < num_patients; i++) {
-        Patient patient;
+
+        Patient patient;    // tworzy nowy obiekt struktury pacjenta
         patient.id = i + 1;
         patient.is_vip = rand() % 2; // 50% szans na bycie VIP
         patient.age = rand() % 100 + 1; // Wiek od 1 do 100 lat
@@ -119,14 +121,13 @@ void generate_patients(int num_patients) {
             // Proces potomny (pacjent)
             patient_process(patient);
         } else if (pid < 0) {
-            perror("Błąd fork");
+            perror(" Błąd fork\n");
             exit(1);
         }
 
-        // Mała przerwa przed generowaniem kolejnego pacjenta
-        usleep(50000); // 50 ms
+        usleep(50000); // Odstęp między pacjentami
     }
 
-    // Oczekiwanie na zakończenie wszystkich procesów pacjentów
+    // Oczekiwanie na zakończenie wszystkich pacjentów
     while (wait(NULL) > 0);
 }

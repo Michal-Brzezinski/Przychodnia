@@ -3,25 +3,30 @@
 
 int main(int argc, char **argv) {
     // Inicjalizacja generatora liczb pseudolosowych
-    srand(time(NULL)); 
+    srand(time(NULL));
 
-    // Inicjalizacja semaforów i kolejki komunikatów
     initialize_semaphores();
     initialize_message_queue();
 
-    printf("System rejestracji i obsługi pacjentów został uruchomiony.\n");
+    pid_t pid = fork();
+    if (pid == 0) {
+        // Proces rejestracji
+        registration_process();
 
-    // Generowanie procesów pacjentów
-    int num_patients = 3;  // Liczba pacjentów do wygenerowania
-    generate_patients(num_patients);
-    registration_process();
-    // Czyszczenie zasobów IPC po zakończeniu działania systemu
-    cleanup_semaphores();
-    cleanup_message_queue();
+    } else if (pid > 0) {
+        // Proces generujący pacjentów
+        generate_patients(HOW_MUCH_PATIENTS);
+        // Sprzątanie po zakończeniu
+        cleanup_semaphores();
+        cleanup_message_queue();
+    } else {
+        perror(" Błąd fork\n");
+        exit(1);
+    }
 
-    printf("System zakończył pracę.\n");
+    //printf("System zakończył pracę.\n");
 
-    printf("\nWszystkie procesy zakończone.\n");
+    ///printf("\nWszystkie procesy zakończone.\n");
 
     return 0;
 }

@@ -14,6 +14,8 @@
 
 #define MAX_PATIENTS 100 // Maksymalna liczba pacjentów do wygenerowania w ciągu dnia
 #define BUILDING_CAPACITY 50 // Maksymalna liczba pacjentów w przychodni
+#define MAX_ADMISSION 3 // Maksymalna liczba osób do zarejestrowania
+#define HOW_MUCH_PATIENTS 3 // Ilu pacjentów wygenerować
 
 // Klucz i identyfikator semafora
 extern key_t building_key;

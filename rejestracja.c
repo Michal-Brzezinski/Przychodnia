@@ -3,34 +3,29 @@
 // identyfikator kolejki komunikatów
 // extern int queue_id jest w pacjent.h
 
+// Funkcja obsługująca rejestrację
 void registration_process() {
+    Message msg;
+    Confirmation conf;
+    int patients_admissioned=0;
 
-    Message message;
-    Confirmation confirmation;
+    printf("\nRejestracja: Oczekiwanie na pacjentów...\n\n");
 
-    printf("Rejestracja rozpoczęła pracę.\n");
+    while (patients_admissioned < MAX_ADMISSION) {
+        if (msgrcv(queue_id, &msg, sizeof(Message) - sizeof(long), 0, 0) > 0) {
+            printf("Rejestracja: Pacjent %d (VIP: %d, Wiek: %d) zgłosił się.\n", msg.id, msg.is_vip, msg.age);
 
-    while (1) {
-        // Odbieranie wiadomości o rejestracji
-        if (msgrcv(queue_id, &message, sizeof(message) - sizeof(long), 0, 0) == -1) {
-            perror("Błąd odbierania wiadomości w rejestracji");
-            exit(1);
-        }
+            // Wysłanie potwierdzenia rejestracji
+            conf.type = msg.id;
+            conf.id = msg.id;
 
-        printf("Rejestracja: Odebrano zgłoszenie pacjenta %d (VIP: %d, Wiek: %d).\n",
-               message.id, message.is_vip, message.age);
-
-        // Symulacja czasu rejestracji
-        sleep(1);
-
-        // Przygotowanie i wysłanie potwierdzenia rejestracji
-        confirmation.type = message.id;
-        confirmation.id = message.id;
-
-        if (msgsnd(queue_id, &confirmation, sizeof(confirmation) - sizeof(long), 0) == -1) {
-            perror("Błąd wysyłania potwierdzenia rejestracji");
-        } else {
-            printf("Rejestracja: Zarejestrowano pacjenta %d.\n", message.id);
+            if (msgsnd(queue_id, &conf, sizeof(Confirmation) - sizeof(long), 0) == -1) {
+                perror(" Błąd wysyłania potwierdzenia\n");
+            }
+            patients_admissioned++;
+        } 
+        else if (errno != EINTR) {
+            perror(" Błąd odbierania wiadomości\n");
         }
     }
 }
