@@ -125,7 +125,7 @@ void generate_patients(int num_patients) {
             exit(1);
         }
 
-        usleep(50000); // Odstęp między pacjentami
+        sleep(3); // Odstęp między pacjentami
     }
 
     // Oczekiwanie na zakończenie wszystkich pacjentów

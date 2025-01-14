@@ -23,8 +23,8 @@ int main(int argc, char **argv) {
         perror(" Błąd fork\n");
         exit(1);
     }
-
-    //printf("System zakończył pracę.\n");
+    while (wait(NULL) > 0);
+    printf("System zakończył pracę.\n");
 
     ///printf("\nWszystkie procesy zakończone.\n");
 
