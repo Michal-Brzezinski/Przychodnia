@@ -13,12 +13,13 @@ void registration_process() {
 
     while (patients_admissioned < MAX_ADMISSION) {
         if (msgrcv(queue_id, &msg, sizeof(Message) - sizeof(long), 0, 0) > 0) {
+            // bo msg_sz – rozmiar komunikatu na który wskazuje msg_ptr bez wartości long int;
             printf("Rejestracja: Pacjent %d (VIP: %d, Wiek: %d) zgłosił się.\n", msg.id, msg.is_vip, msg.age);
 
             // Wysłanie potwierdzenia rejestracji
             conf.type = msg.id;
             conf.id = msg.id;
-
+sleep(6);
             if (msgsnd(queue_id, &conf, sizeof(Confirmation) - sizeof(long), 0) == -1) {
                 perror(" Błąd wysyłania potwierdzenia\n");
             }

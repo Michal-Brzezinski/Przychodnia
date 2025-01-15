@@ -62,6 +62,8 @@ void patient_process(Patient patient) {
     Message msg;
     Confirmation conf;
 
+    int patient_counter = 0;
+
     printf("Pacjent %d (VIP: %d, Wiek: %d) próbuje wejść do budynku.\n", patient.id, patient.is_vip, patient.age);
 
     // Próba wejścia do budynku
@@ -69,37 +71,40 @@ void patient_process(Patient patient) {
     sem_op.sem_op = -1; // Opuszczenie semafora
     sem_op.sem_flg = 0; // Zablokuj jeśli brak zasobów
 
-    if (semop(building_sem_id, &sem_op, 1) == 0) {
-        printf("Pacjent %d wszedł do budynku.\n", patient.id);
+    if(patient_counter <= BUILDING_CAPACITY){
+        if (semop(building_sem_id, &sem_op, 1) == 0) {
+            printf("Pacjent %d wszedł do budynku.\n", patient.id);
 
-        // Wysłanie wiadomości do kolejki
-        msg.type = patient.is_vip ? 1 : 2; // VIP ma wyższy priorytet
-        msg.id = patient.id;
-        msg.age = patient.age;
-        msg.is_vip = patient.is_vip;
+            // Wysłanie wiadomości do kolejki
+            msg.type = patient.is_vip ? 1 : 2; // VIP ma wyższy priorytet
+            msg.id = patient.id;
+            msg.age = patient.age;
+            msg.is_vip = patient.is_vip;
 
-        if (msgsnd(queue_id, &msg, sizeof(Message) - sizeof(long), 0) == -1) {
-            perror(" Błąd wysyłania wiadomości do kolejki\n");
-            exit(1);
-        }
+            if (msgsnd(queue_id, &msg, sizeof(Message) - sizeof(long), 0) == -1) {
+                perror(" Błąd wysyłania wiadomości do kolejki\n");
+                exit(1);
+            }
 
-        // Oczekiwanie na potwierdzenie rejestracji
-        while (1) {
-            if (msgrcv(queue_id, &conf, sizeof(Confirmation) - sizeof(long), patient.id, 0) > 0) {
-                printf("Pacjent %d został zarejestrowany.\n", patient.id);
-                break;
-            } else if (errno != EINTR) {
-                perror(" Błąd odbierania potwierdzenia rejestracji\n");
-                break;
+            // Oczekiwanie na potwierdzenie rejestracji
+            while (1) {
+                if (msgrcv(queue_id, &conf, sizeof(Confirmation) - sizeof(long), patient.id, 0) > 0) {
+                    printf("Pacjent %d został zarejestrowany.\n", patient.id);
+                    break;
+                } else if (errno != EINTR) {
+                    perror(" Błąd odbierania potwierdzenia rejestracji\n");
+                    break;
+                }
+            }
+
+            // Opuszczanie budynku
+            printf("Pacjent %d opuszcza budynek.\n", patient.id);
+            sem_op.sem_op = 1; // Zwalnianie miejsca w semaforze
+            if (semop(building_sem_id, &sem_op, 1) == -1) {
+                perror(" Błąd semop (zwolnienie)\n");
             }
         }
-
-        // Opuszczanie budynku
-        printf("Pacjent %d opuszcza budynek.\n", patient.id);
-        sem_op.sem_op = 1; // Zwalnianie miejsca w semaforze
-        if (semop(building_sem_id, &sem_op, 1) == -1) {
-            perror(" Błąd semop (zwolnienie)\n");
-        }
+        else perror("Błędna wartość zwracana przez semop()\n");
     } 
     else {
         printf("Pacjent %d nie mógł wejść do budynku - brak miejsca.\n", patient.id);
