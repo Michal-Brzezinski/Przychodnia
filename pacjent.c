@@ -28,13 +28,6 @@ void initialize_semaphores() {
     }
 }
 
-void cleanup_semaphores() {     // usuniecie zbioru semaforow
-    if (semctl(building_sem_id, 0, IPC_RMID) == -1) {
-        perror("Błąd semctl (IPC_RMID)");
-    }
-}
-
-
 void initialize_message_queue() {
     queue_key = ftok(".", 'Q');  // Utworzenie klucza kolejki
     if (queue_key == -1) {
@@ -49,11 +42,6 @@ void initialize_message_queue() {
     }
 }
 
-void cleanup_message_queue() {
-    if (msgctl(queue_id, IPC_RMID, NULL) == -1) {
-        perror("Błąd msgctl (usuwanie kolejki)");
-    }
-}
 
 
 // Proces pacjenta
@@ -114,10 +102,12 @@ void patient_process(Patient patient) {
 }
 
 void generate_patients(int num_patients) {
-    for (int i = 0; i < num_patients; i++) {
+    int i =0;
+    while(1) {
 
         Patient patient;    // tworzy nowy obiekt struktury pacjenta
         patient.id = i + 1;
+        i++;
         patient.is_vip = rand() % 2; // 50% szans na bycie VIP
         patient.age = rand() % 100 + 1; // Wiek od 1 do 100 lat
 
@@ -130,7 +120,7 @@ void generate_patients(int num_patients) {
             exit(1);
         }
 
-        sleep(3); // Odstęp między pacjentami
+        sleep(4); // Odstęp między pacjentami
     }
 
     // Oczekiwanie na zakończenie wszystkich pacjentów

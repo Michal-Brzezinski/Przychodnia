@@ -1,10 +1,19 @@
 #include "pacjent.h"
 #include "rejestracja.h"
+#include "funkcje_porzadkowe.h"
 
 int main(int argc, char **argv) {
     // Inicjalizacja generatora liczb pseudolosowych
     srand(time(NULL));
 
+    // Rejestracja obsługi sygnału SIGINT (Ctrl+C)
+    if (signal(SIGINT, signal_handler) == SIG_ERR) {
+        perror("Błąd przy rejestracji obsługi sygnału SIGINT");
+        exit(1);
+    }
+
+    //Funkcja signal() rejestruje funkcję signal_handler 
+    //jako obsługującą sygnał SIGINT, który jest wysyłany, gdy użytkownik naciśnie Ctrl+C.
     initialize_semaphores();
     initialize_message_queue();
 
@@ -12,13 +21,17 @@ int main(int argc, char **argv) {
     if (pid == 0) {
         // Proces rejestracji
         registration_process();
-
     } else if (pid > 0) {
         // Proces generujący pacjentów
-        generate_patients(HOW_MUCH_PATIENTS);
-        // Sprzątanie po zakończeniu
-        cleanup_semaphores();
-        cleanup_message_queue();
+        generate_patients();
+        
+        // Pętla w nieskończoność generująca pacjentów
+        while (keep_generating) {
+            sleep(1);  // Opcjonalnie można dodać mały sen w tej pętli, żeby nie obciążać CPU
+        }
+
+        // W przypadku zakończenia generowania pacjentów lub wyjścia z pętli
+        cleanup();  // Upewnij się, że zasoby IPC są zwolnione
     } else {
         perror(" Błąd fork\n");
         exit(1);

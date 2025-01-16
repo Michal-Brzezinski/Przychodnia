@@ -51,10 +51,7 @@ typedef struct {
 
 // Funkcje
 void patient_process(Patient patient);
-void generate_patients(int num_patients);
+void generate_patients();
 
 void initialize_semaphores();
-void cleanup_semaphores();
-
 void initialize_message_queue();
-void cleanup_message_queue();
