@@ -30,16 +30,13 @@ int main(int argc, char **argv) {
             sleep(1);  // Opcjonalnie można dodać mały sen w tej pętli, żeby nie obciążać CPU
         }
 
-        // W przypadku zakończenia generowania pacjentów lub wyjścia z pętli
-        cleanup();  // Upewnij się, że zasoby IPC są zwolnione
     } else {
         perror(" Błąd fork\n");
         exit(1);
     }
     while (wait(NULL) > 0);
     printf("System zakończył pracę.\n");
-
-    ///printf("\nWszystkie procesy zakończone.\n");
+    // W przypadku zakończenia generowania pacjentów lub wyjścia z pętli
 
     return 0;
 }

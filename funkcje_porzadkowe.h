@@ -18,6 +18,5 @@ extern volatile int keep_generating;  // Domyślnie generowanie pacjentów jest 
 
 void cleanup_semaphores();
 void cleanup_message_queue();
-void cleanup();
 void signal_handler(int sig);
 

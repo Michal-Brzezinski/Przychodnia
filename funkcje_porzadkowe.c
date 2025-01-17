@@ -1,7 +1,8 @@
 #include "funkcje_porzadkowe.h"
 #include "pacjent.h"
 
-volatile int keep_generating;
+volatile int keep_generating;   // volatile oznacza, żeby kompilator nie optymalizował
+                                // używane w sytuacjach gdy wartość zmiennej jest zmieniana np przez sygnał
 
 void cleanup_message_queue() {
     if (msgctl(queue_id, IPC_RMID, NULL) == -1) {
@@ -14,11 +15,6 @@ void cleanup_semaphores() {     // usuniecie zbioru semaforow
         perror("Błąd semctl (IPC_RMID)");}
 }
 
-void cleanup() {
-
-    cleanup_message_queue();
-    cleanup_semaphores();
-}
 
 void signal_handler(int sig) {
     
@@ -27,11 +23,12 @@ void signal_handler(int sig) {
     // Zatrzymanie generowania pacjentów
     keep_generating = 0;
 
-    // Zwalnianie zasobów
-    cleanup();
-
     // Czekanie na zakończenie wszystkich procesów potomnych
     while (wait(NULL) > 0);  // Oczekiwanie na zakończenie procesów potomnych
+
+    // Zwalnianie zasobów
+    cleanup_semaphores();
+    cleanup_message_queue();
 
     exit(0);  // Zakończenie programu
 }
