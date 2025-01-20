@@ -26,9 +26,7 @@ void signal_handler(int sig) {
     // Czekanie na zakończenie wszystkich procesów potomnych
     while (wait(NULL) > 0);  // Oczekiwanie na zakończenie procesów potomnych
 
-    // Zwalnianie zasobów
-    cleanup_semaphores();
-    cleanup_message_queue();
+
 
     exit(0);  // Zakończenie programu
 }

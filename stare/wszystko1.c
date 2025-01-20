@@ -15,7 +15,7 @@
 #define BUILDING_CAPACITY 10 // Maksymalna liczba pacjentów w przychodni
 #define MAX_ADMISSION 3 // Ilość pacjentów przyjmowanych do rejestracji
 
-volatile int keep_generating = 1;   // Zmienna do kontrolowania generowania pacjentów
+//volatile int keep_generating = 1;   // Zmienna do kontrolowania generowania pacjentów
 
 // Klucz i identyfikator semafora
 key_t building_key;
@@ -88,6 +88,7 @@ void cleanup_message_queue() {
 }
 
 void cleanup_semaphores() {
+    
     if (building_sem_id != -1) {
         if (semctl(building_sem_id, 0, IPC_RMID) == -1) {
             perror("Błąd semctl (IPC_RMID)");
@@ -96,8 +97,8 @@ void cleanup_semaphores() {
 }
 
 void signal_handler(int sig) {
-    keep_generating = 0;
-    while (wait(NULL) > 0);  
+    //keep_generating = 0;
+    //while (wait(NULL) > 0);  
     cleanup_semaphores();
     cleanup_message_queue();
     exit(0);  
@@ -153,7 +154,7 @@ void patient_process(Patient patient) {
 
 void generate_patients() {
     int i = 0;
-    while (keep_generating) {
+    while (1) {
         Patient patient;    
         patient.id = i + 1;
         i++;
@@ -216,7 +217,7 @@ int main(int argc, char **argv) {
         registration_process();
     } else if (pid > 0) {
         generate_patients();
-        while (keep_generating) {
+        while (1) {
             sleep(1);  
         }
     } else {
@@ -224,7 +225,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    while (wait(NULL) > 0);
+    //while (wait(NULL) > 0);
 
     return 0;
 }
