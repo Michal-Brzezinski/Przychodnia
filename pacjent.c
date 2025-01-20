@@ -4,16 +4,11 @@
 #include <sys/ipc.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/msg.h>
 #include "operacje.h"
 
 #define S 1 // ilosc semaforow w zbiorze
 
-typedef struct {
-    int id_pacjent; // numer pacjenta - pid
-    int vip; // 1 jeśli VIP, 0 jeśli nie
-    int wiek;    // Wiek pacjenta
-    int id_lekarz;  // numer lekarza, do którego pacjent chce się udać
-} Pacjent;
 
 int main(){
 
@@ -30,7 +25,10 @@ int main(){
     pacjent.wiek = rand() % 100 + 1; // Wiek od 1 do 100 lat
 
     pacjent.id_lekarz = rand() % 5;
-    // -----------------------------------------------------
+
+
+    // _______________________________  DOSTANIE SIĘ DO BUDYNKU     _______________________________________
+
 
     key_t klucz_wejscia;    // do semafora panującego nad ilością pacjentów w budynku
     if ( (klucz_wejscia = ftok(".", 'A')) == -1 )
@@ -43,12 +41,58 @@ int main(){
 
     printf("Pacjent nr %d, wiek: %d, vip:%d próbuje wejść do budynku\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
     fflush(stdout);
+
+    sleep(rand() % 3 + 1); // Losowe opóźnienie 1-3 sekundy
+    /* SYMULACJA CZASU POTRZEBNEGO NA WEJŚCIE DO BUDYNKU */
+    
     waitSemafor(semID, 0, 0);
     printf("Pacjent nr %d, wiek: %d, vip:%d wszedł do budynku\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
     fflush(stdout);
-    int sleeptime = rand() % 5;
-    sleep(sleeptime);
+
+    sleep(5); // opóźnienie 10 sekund w budynku
+
+
+    /*  ________________________________    KOMUNIKACJA Z REJESTRACJĄ   __________________________________________*/
+
+    key_t msg_key;
+    int msg_id;
+
+    // Utwórz klucz do kolejki komunikatów
+    if ((msg_key = ftok(".", 'B')) == -1) {
+        perror("Błąd ftok");
+        exit(1);
+    }
+
+    // Otwórz kolejkę komunikatów
+    if ((msg_id = msgget(msg_key, IPC_CREAT | 0666)) == -1) {
+        perror("Błąd msgget - pacjent");
+        exit(2);
+    }
+
+    // Wypełnij strukturę wiadomości
+    Wiadomosc msg;
+    msg.mtype = (pacjent.vip == 1)+1; // przypisanie typu komunikatu na podstawie bycia vipem 
+    msg.id_pacjent = getpid();
+    msg.vip = pacjent.vip;
+    msg.wiek = pacjent.wiek;
+    msg.id_lekarz = pacjent.id_lekarz;
+
+    // Wyślij wiadomość do rejestracji
+    if (msgsnd(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+        perror("Błąd msgsnd - pacjent");
+        exit(1);
+    }
+
+    // Pacjent oczekuje na rejestrację
+    printf("Pacjent %d czeka na rejestrację.\n", msg.id_pacjent);
+
+
+    /*  =======================================================================================   */
+
+
     signalSemafor(semID, 0);
+    printf("Pacjent nr %d, wiek: %d, vip:%d wyszedł z budynku\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
+
 
     return 0;
 }

@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "cstdlib": "c"
+        "cstdlib": "c",
+        "time.h": "c",
+        "operacje.h": "c"
     }
 }

@@ -6,9 +6,9 @@
 #include <unistd.h> // Dodany nagłówek dla fork() i execl() 
 #include <sys/wait.h> // Dodany nagłówek dla wait() #include "operacje.h" 
 #include "operacje.h"
-#define S 1     // ilosc semaforow w zbiorze - w razie potrzeby zwiększyć
-#define BUILDING_MAX 4     // maksymalna pojemność pacjentów w budynku 
-#define MAX_GENERATE 10    // maksymalna liczba procesów pacjentów do wygenerowania
+#define S 2     // ilosc semaforow w zbiorze - w razie potrzeby zwiększyć
+#define BUILDING_MAX 3     // maksymalna pojemność pacjentów w budynku 
+#define MAX_GENERATE 12    // maksymalna liczba procesów pacjentów do wygenerowania
 
 int main(){
 
@@ -26,24 +26,39 @@ int main(){
     // W RAZIE WIĘKSZEJ ILOŚCI SEMAFORÓW
 
     inicjalizujSemafor(semID,0,BUILDING_MAX);
+    inicjalizujSemafor(semID,1,0);
     // semafor zainicjalizowany na maksymalną liczbe pacjentów w budynku
 
     printf("Semafory gotowe!\n");
     fflush(stdout);
 
     // GENEROWANIE PACJENTÓW
-    for (i = 0; i < MAX_GENERATE; i++)
+    for (i = 0; i < MAX_GENERATE; i++){
       switch (fork())
       {
          case -1:
-            perror("Blad fork (mainprog)");
+            perror("Błąd fork (mainprog)");
             zwolnijSemafor(semID, S);
             exit(2);
          case 0:
             execl("./pacjent", "pacjent", NULL);
       }
 
-    for (i = 0; i < MAX_GENERATE; i++)
+      sleep(rand() % 3); // Losowe opóźnienie 0-3 sekund 
+
+    }
+
+    switch (fork()) {
+    case -1:
+        perror("Błąd fork dla rejestracji");
+        exit(2);
+    case 0:
+        execl("./rejestracja", "rejestracja", NULL);
+        perror("Błąd execl dla rejestracji");
+        exit(3);
+}
+
+    for (i = 0; i < MAX_GENERATE + 1 ; i++) // + 1 bo jeszcze proces rejestracji
       wait( (int *)NULL );
 
     zwolnijSemafor(semID, S);
