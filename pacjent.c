@@ -5,10 +5,15 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/msg.h>
-#include "operacje.h"
 
-#define S 1 // ilosc semaforow w zbiorze
+#include "msg_utils.h"
+#include "sem_utils.h"
+#include "dekoratory.h"
 
+#define S 2 // ilosc semaforow w zbiorze
+
+void inicjalizujWiadomosc(Wiadomosc *msg, Pacjent *pacjent);
+void inicjalizujPacjenta(Pacjent *pacjent);
 
 int main(){
 
@@ -16,68 +21,36 @@ int main(){
 
     // ----------- inicjalizacja wartości struktury pacjenta
     Pacjent pacjent;
-    pacjent.id_pacjent = getpid();
-    
-    int pomocnicza_vip = rand() % 100;
-    if (pomocnicza_vip < 10)  pacjent.vip = 1; // 10% szans  
-    else pacjent.vip  = 0; // 90% szans 
-    
-    pacjent.wiek = rand() % 100 + 1; // Wiek od 1 do 100 lat
-
-    pacjent.id_lekarz = rand() % 5;
-
+    inicjalizujPacjenta(&pacjent);
 
     // _______________________________  DOSTANIE SIĘ DO BUDYNKU     _______________________________________
 
 
-    key_t klucz_wejscia;    // do semafora panującego nad ilością pacjentów w budynku
-    if ( (klucz_wejscia = ftok(".", 'A')) == -1 )
-    {
-      printf("Blad ftok (main)\n");
-      exit(1);
-    }
+    key_t klucz_wejscia = generuj_klucz_ftok(".",'A');
 
-    int semID = alokujSemafor(klucz_wejscia, S, IPC_CREAT | 0666);
+    int semID = alokujSemafor(klucz_wejscia, S, IPC_CREAT | 0600);
 
     printf("Pacjent nr %d, wiek: %d, vip:%d próbuje wejść do budynku\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
     fflush(stdout);
 
-    sleep(rand() % 3 + 1); // Losowe opóźnienie 1-3 sekundy
-    /* SYMULACJA CZASU POTRZEBNEGO NA WEJŚCIE DO BUDYNKU */
-    
-    waitSemafor(semID, 0, 0);
+    sleep(losuj_int(3));    /* SYMULACJA CZASU POTRZEBNEGO NA WEJŚCIE DO BUDYNKU */
+
+    waitSemafor(semID, 0, 0);   /* SPRAWDZA CZY MOŻE WEJŚĆ DO BUDYNKU BAZUJĄC NA SEMAFORZE*/
     printf("Pacjent nr %d, wiek: %d, vip:%d wszedł do budynku\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
     fflush(stdout);
 
-    sleep(5); // opóźnienie 10 sekund w budynku
+    sleep(5); // opóźnienie 5 sekund w budynku
 
 
     /*  ________________________________    KOMUNIKACJA Z REJESTRACJĄ   __________________________________________*/
 
-    key_t msg_key;
-    int msg_id;
+    key_t msg_key = generuj_klucz_ftok(".",'B');
+    int msg_id = alokujKolejkeKomunikatow(msg_key,IPC_CREAT | 0600);
 
-    // Utwórz klucz do kolejki komunikatów
-    if ((msg_key = ftok(".", 'B')) == -1) {
-        perror("Błąd ftok");
-        exit(1);
-    }
-
-    // Otwórz kolejkę komunikatów
-    if ((msg_id = msgget(msg_key, IPC_CREAT | 0666)) == -1) {
-        perror("Błąd msgget - pacjent");
-        exit(2);
-    }
-
-    // Wypełnij strukturę wiadomości
     Wiadomosc msg;
-    msg.mtype = (pacjent.vip == 1)+1; // przypisanie typu komunikatu na podstawie bycia vipem 
-    msg.id_pacjent = getpid();
-    msg.vip = pacjent.vip;
-    msg.wiek = pacjent.wiek;
-    msg.id_lekarz = pacjent.id_lekarz;
+    inicjalizujWiadomosc(&msg, &pacjent);
 
-    // Wyślij wiadomość do rejestracji
+        // Wyślij wiadomość do rejestracji
     if (msgsnd(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
         perror("Błąd msgsnd - pacjent");
         exit(1);
@@ -86,6 +59,7 @@ int main(){
     // Pacjent oczekuje na rejestrację
     printf("Pacjent %d czeka na rejestrację.\n", msg.id_pacjent);
 
+    waitSemafor(semID, 1, 0);   // czeka aż przyjdzie komunikat
 
     /*  =======================================================================================   */
 
@@ -95,4 +69,29 @@ int main(){
 
 
     return 0;
+}
+
+
+void inicjalizujPacjenta(Pacjent *pacjent){
+
+    pacjent->id_pacjent = getpid();
+
+    int pomocnicza_vip = losuj_int(100);
+    if (pomocnicza_vip < 10)  pacjent->vip = 1; // 10% szans
+    else pacjent->vip  = 0; // 90% szans
+
+    pacjent->wiek = losuj_int(100); // Wiek 0-100 lat
+
+    pacjent->id_lekarz = losuj_int(4)+1; // id od 1-5
+
+}
+
+void inicjalizujWiadomosc(Wiadomosc *msg, Pacjent *pacjent){
+
+    msg->mtype = (pacjent->vip == 1)+1; // przypisanie typu komunikatu na podstawie bycia vipem
+    msg->id_pacjent = getpid();
+    msg->vip = pacjent->vip;
+    msg->wiek = pacjent->wiek;
+    msg->id_lekarz = pacjent->id_lekarz;
+
 }

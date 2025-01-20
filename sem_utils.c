@@ -1,4 +1,6 @@
-#include "operacje.h"
+#include "sem_utils.h"
+
+/* _____________________________    SEMAFORY    __________________________________ */
 
 int alokujSemafor(key_t klucz, int number, int flagi)
 {
@@ -28,7 +30,7 @@ void inicjalizujSemafor(int semID, int number, int val)
 
 int waitSemafor(int semID, int number, int flags)
 {
-   int result;
+   //int result;
    struct sembuf operacje[1];
    operacje[0].sem_num = number;
    operacje[0].sem_op = -1;
@@ -61,17 +63,6 @@ int valueSemafor(int semID, int number)
    return semctl(semID, number, GETVAL, NULL);
 }
 
-/*
-double getRand(int *nseed)
-{
-   double number;
 
-   srand( *nseed );
-   number = (double)rand();
-   *nseed = (int)number;
-   number /= (RAND_MAX+1.0);
 
-   return number;
-}
 
-*/

@@ -5,10 +5,10 @@
 #include <sys/sem.h> 
 #include <unistd.h> // Dodany nagłówek dla fork() i execl() 
 #include <sys/wait.h> // Dodany nagłówek dla wait() #include "operacje.h" 
-#include "operacje.h"
+#include "sem_utils.h"
 #define S 2     // ilosc semaforow w zbiorze - w razie potrzeby zwiększyć
 #define BUILDING_MAX 3     // maksymalna pojemność pacjentów w budynku 
-#define MAX_GENERATE 12    // maksymalna liczba procesów pacjentów do wygenerowania
+#define MAX_GENERATE 5    // maksymalna liczba procesów pacjentów do wygenerowania
 
 int main(){
 
@@ -20,13 +20,10 @@ int main(){
       exit(1);
     }
     int semID = alokujSemafor(klucz_wejscia, S, IPC_CREAT | IPC_EXCL | 0666);
-    
-    //for (int i = 0; i < S; i++)
-    //inicjalizujSemafor(semID, i, 0); // inicjalizujemy zerami
-    // W RAZIE WIĘKSZEJ ILOŚCI SEMAFORÓW
 
     inicjalizujSemafor(semID,0,BUILDING_MAX);
-    inicjalizujSemafor(semID,1,0);
+    inicjalizujSemafor(semID,1,0);  //potrzebny, aby proces czekał na potwierdzenie przyjęcia
+    
     // semafor zainicjalizowany na maksymalną liczbe pacjentów w budynku
 
     printf("Semafory gotowe!\n");

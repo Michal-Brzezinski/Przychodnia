@@ -2,6 +2,11 @@
     "files.associations": {
         "cstdlib": "c",
         "time.h": "c",
-        "operacje.h": "c"
-    }
+        "operacje.h": "c",
+        "dekoratory.h": "c",
+        "pacjent.h": "c",
+        "ipc.h": "c",
+        "sem_utils.h": "c"
+    },
+    "makefile.configureOnOpen": true
 }
