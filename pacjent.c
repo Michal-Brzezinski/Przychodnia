@@ -17,8 +17,6 @@ void inicjalizujPacjenta(Pacjent *pacjent);
 
 int main(){
 
-    srand(time(0) ^ getpid()); // Inicjalizacja generatora liczb losowych
-
     // ----------- inicjalizacja wartości struktury pacjenta
     Pacjent pacjent;
     inicjalizujPacjenta(&pacjent);
@@ -50,21 +48,21 @@ int main(){
     Wiadomosc msg;
     inicjalizujWiadomosc(&msg, &pacjent);
 
+    // Pacjent oczekuje na rejestrację
+    printf("Pacjent %d czeka na rejestrację w kolejce.\n", msg.id_pacjent);
+
         // Wyślij wiadomość do rejestracji
     if (msgsnd(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
         perror("Błąd msgsnd - pacjent");
         exit(1);
     }
 
-    // Pacjent oczekuje na rejestrację
-    printf("Pacjent %d czeka na rejestrację.\n", msg.id_pacjent);
-
     waitSemafor(semID, 1, 0);   // czeka aż przyjdzie komunikat
 
     /*  =======================================================================================   */
 
 
-    signalSemafor(semID, 0);
+    signalSemafor(semID, 0);    // zwolnienie semafora wejścia do budynku 
     printf("Pacjent nr %d, wiek: %d, vip:%d wyszedł z budynku\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
 
 

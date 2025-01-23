@@ -6,7 +6,9 @@
         "dekoratory.h": "c",
         "pacjent.h": "c",
         "ipc.h": "c",
-        "sem_utils.h": "c"
+        "sem_utils.h": "c",
+        "unistd.h": "c",
+        "msg.h": "c"
     },
     "makefile.configureOnOpen": true
 }

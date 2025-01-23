@@ -6,8 +6,10 @@
 #include <sys/msg.h>
 #include <unistd.h>
 #include "sem_utils.h"
+#include "msg_utils.h"
 #include "dekoratory.h"
 #include <pthread.h>
+#include <signal.h>
 
 #define BUILDING_MAX 3 // Maksymalna liczba pacjentów w budynku
 #define K (BUILDING_MAX / 2)
@@ -24,6 +26,7 @@ pthread_mutex_t lock; // Mutex do synchronizacji
 
 volatile int running = 1; // Flaga do sygnalizowania zakończenia
 
+/*
 void *process_patients(void *arg) {
     int window_id = *(int *)arg;
     free(arg);
@@ -58,8 +61,9 @@ void *process_patients(void *arg) {
 
     printf("Okienko %d: Zamyka się.\n", window_id);
     return NULL;
-}
+}*/
 
+/*
 int main() {
     key_t msg_key;
     pthread_mutex_init(&lock, NULL);
@@ -128,4 +132,78 @@ int main() {
         perror("Błąd usuwania kolejki komunikatów");
     }
     return 0;
+}*/
+
+
+// Zmienna globalna do przechowywania pid procesu okienka nr 2
+pid_t pid_okienka2 = -1;
+
+// Funkcja pomocnicza do obliczania liczby procesów w kolejce
+int policzProcesy(int msg_id) {
+    // Zlicz liczbę komunikatów w kolejce (w prostym przypadku nieopóźnionym)
+    int liczba_procesow = 0;
+    struct msqid_ds buf;
+    if (msgctl(msg_id, IPC_STAT, &buf) == -1) {
+        perror("msgctl IPC_STAT");
+        exit(1);
+    }
+    liczba_procesow = buf.msg_qnum;
+    return liczba_procesow;
+}
+
+void uruchomOkienkoNr2(int msg_id, int semID) {
+    // Uruchomienie dodatkowego procesu rejestracji (okienka nr 2)
+    pid_okienka2 = fork();
+    if (pid_okienka2 == 0) {
+        // Dziecko: Okienko nr 2
+        printf("Otworzenie okienka nr 2...\n");
+        while (1) {
+            // Czekaj na komunikaty
+            Wiadomosc msg;
+            if (msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, 0) == -1) {
+                perror("Błąd msgrcv");
+                exit(1);
+            }
+            printf("Okienko nr 2: Rejestracja pacjenta %d\n", msg.id_pacjent);
+            sleep(1);  // symulacja procesu rejestracji
+        }
+    }
+}
+
+void zatrzymajOkienkoNr2() {
+    // Jeśli proces okienka nr 2 istnieje, wyślij do niego sygnał zakończenia
+    if (pid_okienka2 != -1) {
+        printf("Zatrzymywanie okienka nr 2...\n");
+        kill(pid_okienka2,SIGTERM);  // Wysłać sygnał SIGTERM do procesu okienka nr 2 (zakończenie)
+    }
+}
+
+int main() {
+    key_t msg_key = generuj_klucz_ftok(".", 'B');
+    int msg_id = alokujKolejkeKomunikatow(msg_key, IPC_CREAT | 0600);
+    key_t klucz_wejscia = generuj_klucz_ftok(".", 'A');
+    int semID = alokujSemafor(klucz_wejscia, S, IPC_CREAT | 0600);
+
+    while (policzProcesy(msg_id)>0) {
+        // Czekaj na komunikat rejestracji
+        Wiadomosc msg;
+        if (msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, 0) == -1) {
+            perror("Błąd msgrcv");
+            exit(1);
+        }
+        printf("Rejestracja pacjenta %d\n", msg.id_pacjent);
+
+        // Sprawdź liczbę procesów oczekujących na rejestrację
+        int liczba_procesow = policzProcesy(msg_id);
+        if (liczba_procesow > K) {
+            // Uruchomienie okienka nr 2
+            uruchomOkienkoNr2(msg_id, semID);
+        } else if (liczba_procesow < K / 3) {
+            // Jeśli liczba procesów spadła poniżej K/3, zatrzymaj okienko nr 2
+            zatrzymajOkienkoNr2();
+        }
+
+        // Proces rejestracji kontynuuje swoją pracę
+        sleep(1);
+    }
 }

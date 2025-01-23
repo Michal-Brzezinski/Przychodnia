@@ -4,7 +4,7 @@
 int losuj_int(int N) { 
     /* Zwraca losową wartość z zakresu od 0 do N */
 
-    srand(time(NULL)); 
+    srand(time(0) ^ getpid()); // Inicjalizacja generatora liczb losowych
     return rand() % (N + 1); 
 }
 
