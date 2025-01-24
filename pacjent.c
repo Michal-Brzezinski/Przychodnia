@@ -6,9 +6,9 @@
 #include <unistd.h>
 #include <sys/msg.h>
 
-#include "msg_utils.h"
-#include "sem_utils.h"
-#include "dekoratory.h"
+#include "MyLib/msg_utils.h"
+#include "MyLib/sem_utils.h"
+#include "MyLib/dekoratory.h"
 
 #define S 2 // ilosc semaforow w zbiorze
 
@@ -75,8 +75,8 @@ void inicjalizujPacjenta(Pacjent *pacjent){
     pacjent->id_pacjent = getpid();
 
     int pomocnicza_vip = losuj_int(100);
-    if (pomocnicza_vip < 10)  pacjent->vip = 1; // 10% szans
-    else pacjent->vip  = 0; // 90% szans
+    if (pomocnicza_vip < 20)  pacjent->vip = 1; // 20% szans
+    else pacjent->vip  = 0; // 80% szans
 
     pacjent->wiek = losuj_int(100); // Wiek 0-100 lat
 
