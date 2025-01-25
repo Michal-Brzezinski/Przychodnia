@@ -20,6 +20,11 @@ volatile sig_atomic_t keep_generating = 1;
 pid_t generator_pid = -1;
 pid_t rejestracja_pid = -1;
 
+void handle_sigchld(int sig) {
+    // Obsługa zakończenia procesów potomnych
+    while (waitpid(-1, NULL, WNOHANG) > 0);
+}
+
 void handle_sigint(int sig) {
     keep_generating = 0;
 
@@ -58,6 +63,18 @@ int main(){
     // Ustawienie obsługi sygnału SIGINT
     signal(SIGINT, handle_sigint);
 
+    // Ustawienie obsługi sygnału SIGCHLD, by zapobiec zombiakom
+    struct sigaction sa;
+    sa.sa_handler = &handle_sigchld;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+    // SA_NONLDSTOP - nie wysyłać sygnału SIGCHLD, gdy dziecko zatrzyma się
+    // SA_RESTART - automatycznie wznowić przerwane wywołania systemowe
+    if (sigaction(SIGCHLD, &sa, 0) == -1) {
+        perror("sigaction");
+        exit(1);
+    }
+
 
     // GENEROWANIE PACJENTÓW
 
@@ -70,6 +87,7 @@ int main(){
         exit(2);
     } else if (generator_pid == 0) {
         // Proces potomny: generowanie pacjentów
+        //Teoretycznie ma ten sam handler zakończenia procesów dzieci
         for (i = 0; i < MAX_GENERATE && keep_generating; i++) {
             pid_t pid = fork();
             if (pid == -1) {
