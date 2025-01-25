@@ -12,7 +12,7 @@
 #include "MyLib/sem_utils.h"
 #include "MyLib/dekoratory.h"
 
-#define S 2     // ilosc semaforow w zbiorze - w razie potrzeby zwiększyć
+#define S 3     // ilosc semaforow w zbiorze - w razie potrzeby zwiększyć
 #define BUILDING_MAX 10     // maksymalna pojemność pacjentów w budynku 
 #define MAX_GENERATE 100    // maksymalna liczba procesów pacjentów do wygenerowania
 
@@ -50,10 +50,10 @@ int main(){
     key_t klucz_wejscia =  generuj_klucz_ftok(".", 'A');   // do semafora panującego nad ilością pacjentów w budynku
     int semID = alokujSemafor(klucz_wejscia, S, IPC_CREAT | IPC_EXCL | 0666);
 
-    inicjalizujSemafor(semID,0,BUILDING_MAX);
+    inicjalizujSemafor(semID,0,BUILDING_MAX); // semafor zainicjalizowany na maksymalną liczbe pacjentów w budynku
     inicjalizujSemafor(semID,1,0);  //potrzebny, aby proces czekał na potwierdzenie przyjęcia
+    inicjalizujSemafor(semID,2,1);  // semafor mówiący, że rejestracja jest zamknięta
     
-    // semafor zainicjalizowany na maksymalną liczbe pacjentów w budynku
 
     printGreen("[Main]: Semafory gotowe!");
 

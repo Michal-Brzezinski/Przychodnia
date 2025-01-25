@@ -34,7 +34,7 @@ rejestracja: rejestracja.o MyLib/sem_utils.o MyLib/msg_utils.o MyLib/dekoratory.
 	@gcc -o rejestracja $^
 
 # Kompilowanie pliku rejestracja.o
-rejestracja.o: rejestracja.c MyLib/sem_utils.h MyLib/msg_utils.h MyLib/dekoratory.h pacjent.h
+rejestracja.o: rejestracja.c MyLib/sem_utils.h MyLib/msg_utils.h MyLib/dekoratory.h pacjent.h rejestracja.h
 	@gcc -c rejestracja.c
 
 # Cel do czyszczenia obiektów i plików wykonywalnych

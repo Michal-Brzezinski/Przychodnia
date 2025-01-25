@@ -1,19 +1,9 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <time.h>
-#include <unistd.h>
-#include <sys/msg.h>
 
 #include "MyLib/msg_utils.h"
 #include "MyLib/sem_utils.h"
 #include "MyLib/dekoratory.h"
 
-#define S 2 // ilosc semaforow w zbiorze
-
-void inicjalizujWiadomosc(Wiadomosc *msg, Pacjent *pacjent);
-void inicjalizujPacjenta(Pacjent *pacjent);
+#include "pacjent.h"
 
 int main(){
 
@@ -30,8 +20,6 @@ int main(){
 
     printf("\033[1;34m[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d próbuje wejść do budynku\033[0m\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
     fflush(stdout);
-
-    sleep(1);    /* SYMULACJA CZASU POTRZEBNEGO NA WEJŚCIE DO BUDYNKU */
 
     waitSemafor(semID, 0, 0);   /* SPRAWDZA CZY MOŻE WEJŚĆ DO BUDYNKU BAZUJĄC NA SEMAFORZE*/
     printf("\033[1;34m[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedł do budynku\033[0m\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
@@ -51,7 +39,7 @@ int main(){
     // Pacjent oczekuje na rejestrację
     printf("\033[1;34m[Pacjent]: Pacjent %d czeka na rejestrację w kolejce.\033[0m\n", msg.id_pacjent);
     // inna obsługa czekania w kolejce - zgodna z treścią zadania
-
+    printf("[Pacjent]: Wartość semafora: %d\n", semctl(semID, 0, GETVAL));
         // Wyślij wiadomość do rejestracji
     if (msgsnd(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
         perror("\033[1;31mBłąd msgsnd - pacjent\033[0m\n");
@@ -63,34 +51,10 @@ int main(){
     /*  =======================================================================================   */
 
 
-    signalSemafor(semID, 0);    // zwolnienie semafora wejścia do budynku 
+    // tutaj zrobić obsługę dla zamkniętej rejestracji
+    if(valueSemafor(semID, 2)==1)signalSemafor(semID, 0);    // zwolnienie semafora wejścia do budynku
     printf("\033[1;34m[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedł z budynku\033[0m\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
-
+    fflush(stdout);
 
     return 0;
-}
-
-
-void inicjalizujPacjenta(Pacjent *pacjent){
-
-    pacjent->id_pacjent = getpid();
-
-    int pomocnicza_vip = losuj_int(100);
-    if (pomocnicza_vip < 20)  pacjent->vip = 1; // 20% szans
-    else pacjent->vip  = 0; // 80% szans
-
-    pacjent->wiek = losuj_int(100); // Wiek 0-100 lat
-
-    pacjent->id_lekarz = losuj_int(4)+1; // id od 1-5
-
-}
-
-void inicjalizujWiadomosc(Wiadomosc *msg, Pacjent *pacjent){
-
-    msg->mtype = (pacjent->vip == 1)+1; // przypisanie typu komunikatu na podstawie bycia vipem
-    msg->id_pacjent = getpid();
-    msg->vip = pacjent->vip;
-    msg->wiek = pacjent->wiek;
-    msg->id_lekarz = pacjent->id_lekarz;
-
 }
