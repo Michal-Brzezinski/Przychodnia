@@ -79,6 +79,11 @@ void zatrzymajOkienkoNr2() {
 }
 
 int main() {
+
+
+    printf("Uruchomiono rejestrację\n");
+    fflush(stdout);
+
     key_t msg_key = generuj_klucz_ftok(".", 'B');
     int msg_id = alokujKolejkeKomunikatow(msg_key, IPC_CREAT | 0600);
     key_t klucz_wejscia = generuj_klucz_ftok(".", 'A');
@@ -91,28 +96,41 @@ int main() {
 
     // Godziny otwarcia i zamknięcia rejestracji (w sekundach od północy)
     int Tp = current_time;          // Aktualny czas
-    int Tk = current_time + 60;     // Aktualny czas + 60 sekund (1 minuta)
+    int Tk = current_time + 30;     // Aktualny czas + 60 sekund (1 minuta)
 
-        printf("Uruchomiono rejestrację\n");
+        printf("Rejestracja uruchomiona, oczekuje na pacjentów\n");
+        fflush(stdout);
 
     while (1) {
+
         // Sprawdź aktualny czas
         now = time(NULL);
         local = localtime(&now);
         current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
 
+        printf("Czas: %02d:%02d:%02d\n", local->tm_hour, local->tm_min, local->tm_sec);
+
         // Sprawdź, czy aktualny czas jest poza godzinami otwarcia
         if (current_time < Tp || current_time > Tk) {
             printf("Rejestracja jest zamknięta. Kończenie pracy.\n");
+            fflush(stdout);
             break;  // Wyjście z pętli, gdy czas jest poza godzinami otwarcia
         }
 
         // Czekaj na komunikat rejestracji
         Wiadomosc msg;
-        if (msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, 0) == -1) {
-            perror("Błąd msgrcv");
-            exit(1);
+        if (msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT) == -1) {
+            // Sprawdzamy, czy nie było wiadomości, ale nie blokujemy procesu dzięki IPC_NOWAIT
+            if (errno != ENOMSG) {
+                perror("Błąd msgrcv");
+                exit(1);
+            }
+            
+            printf("Brak pacjentów w kolejce\n\n");
+            sleep(4);  // Czekaj 4 sekundy i sprawdź ponownie
+            continue;
         }
+
         printf("Rejestracja pacjenta %d\n", msg.id_pacjent);
 
         // Sprawdź liczbę procesów oczekujących na rejestrację ponownie
@@ -126,8 +144,14 @@ int main() {
         }
 
         // Proces rejestracji kontynuuje swoją pracę
-        sleep(1);
+        sleep(4);
     }
+    printf("Rejestracja zakończyła działanie\n\n");
+    fflush(stdout);
+
+    printf("Czekam na sygnał zakończenia generowania pacjentów...\n");
+    fflush(stdout);
+
 }
 
 

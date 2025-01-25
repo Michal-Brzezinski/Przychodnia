@@ -48,14 +48,15 @@ int main(){
     // Ustawienie obsługi sygnału SIGINT
     signal(SIGINT, handle_sigint);
 
+
     // GENEROWANIE PACJENTÓW
     for (i = 0; i < MAX_GENERATE && keep_generating; i++) {
         // ostateczna wersja to generowanie aż do otrzymania sygnału zakończenia np. sigterm
         switch (fork()) {
             case -1:
                 perror("Błąd fork (mainprog) - próbuj generować pacjentów dalej");
-                // obsługa błędu - powiadomienie innych procesów (które utworzyły się poprawnie) o błędzie (np. sygnały)
-                exit(2);
+                // ignoruj błąd i kontynuuj generowanie pacjentów
+                break;
             case 0:
                 execl("./pacjent", "pacjent", NULL);
                 perror("Błąd execl dla pacjenta");
@@ -64,24 +65,30 @@ int main(){
 
         sleep(rand() % 3); // Losowe opóźnienie 0-3 sekund 
     }
-
-    switch (fork()) {
+/*
+    pid_t rejestracja_pid = fork();
+    switch (rejestracja_pid) {
         case -1:
             perror("Błąd fork dla rejestracji");
             // obsługa błędu - powiadomienie innych procesów (które utworzyły się poprawnie) o błędzie (np. sygnały)
             exit(2);
         case 0:
+            printf("Uruchamianie rejestracji...\n");
+            fflush(stdout);
             execl("./rejestracja", "rejestracja", NULL);
             // usuwanie wszystkich procesów i zasobów ipc - zaimplementować
             perror("Błąd execl dla rejestracji");
             exit(3);
+        default:
+            break;  // Kontynuuj generowanie pacjentów
     }
+*/
 
     // Czekaj na zakończenie generowania pacjentów
     while (keep_generating) {
         pause(); // Czekaj na sygnał
     }
 
-    printf("Zakończono generowanie pacjentów po otrzymaniu SIGINT.\n");
+    printf("\nZakończono generowanie pacjentów po otrzymaniu SIGINT.\n");
     return 0;
 }
