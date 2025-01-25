@@ -23,6 +23,9 @@ void inicjalizujSemafor(int semID, int number, int val)
    
    if ( semctl(semID, number, SETVAL, val) == -1 )
    {
+      if(errno == EINTR)
+         exit(0);
+      
       perror("Blad semctl (inicjalizujSemafor): ");
       exit(1);
    }
@@ -38,6 +41,9 @@ int waitSemafor(int semID, int number, int flags)
    
    if ( semop(semID, operacje, 1) == -1 )
    {
+      if(errno == EINTR)
+         return 0;
+
       perror("Blad semop (waitSemafor)");
       return -1;
    }
@@ -53,6 +59,8 @@ void signalSemafor(int semID, int number)
    //operacje[0].sem_flg = SEM_UNDO;
 
    if (semop(semID, operacje, 1) == -1 )
+      
+      if(errno != EINTR)
       perror("Blad semop (postSemafor): ");
 
    return;

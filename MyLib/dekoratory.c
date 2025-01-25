@@ -22,3 +22,34 @@ key_t generuj_klucz_ftok(const char *sciezka, char projek_id) {
 
     return klucz; 
 }
+
+void print_fflush(const char *tekst) {
+    /* Wyświetla tekst z funkcjonalnością fflush */
+    printf("%s\n", tekst);
+    fflush(stdout);
+}
+
+
+void printRed(const char *tekst) {
+    /* Wyświetla tekst w kolorze czerwonym */
+    printf("%s%s%s\n", czerwony, tekst, reset);
+    fflush(stdout);
+}
+
+void printBlue(const char *tekst) {
+    /* Wyświetla tekst w kolorze niebieskim */
+    printf("%s%s%s\n", niebieski, tekst, reset);
+    fflush(stdout);
+}
+
+void printGreen(const char *tekst) {
+    /* Wyświetla tekst w kolorze zielonym */
+    printf("%s%s%s\n", zielony, tekst, reset);
+    fflush(stdout);
+}
+
+void printYellow(const char *tekst) {
+    /* Wyświetla tekst w kolorze żółtym */
+    printf("%s%s%s\n", zolty, tekst, reset);
+    fflush(stdout);
+}

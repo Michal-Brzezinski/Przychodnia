@@ -28,16 +28,16 @@ int main(){
 
     int semID = alokujSemafor(klucz_wejscia, S, IPC_CREAT | 0600);
 
-    printf("Pacjent nr %d, wiek: %d, vip:%d próbuje wejść do budynku\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
+    printf("\033[1;34m[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d próbuje wejść do budynku\033[0m\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
     fflush(stdout);
 
-    sleep(losuj_int(3));    /* SYMULACJA CZASU POTRZEBNEGO NA WEJŚCIE DO BUDYNKU */
+    sleep(1);    /* SYMULACJA CZASU POTRZEBNEGO NA WEJŚCIE DO BUDYNKU */
 
     waitSemafor(semID, 0, 0);   /* SPRAWDZA CZY MOŻE WEJŚĆ DO BUDYNKU BAZUJĄC NA SEMAFORZE*/
-    printf("Pacjent nr %d, wiek: %d, vip:%d wszedł do budynku\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
+    printf("\033[1;34m[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedł do budynku\033[0m\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
     fflush(stdout);
 
-    sleep(5); // opóźnienie 5 sekund w budynku
+    sleep(1); // opóźnienie 5 sekund w budynku
 
 
     /*  ________________________________    KOMUNIKACJA Z REJESTRACJĄ   __________________________________________*/
@@ -49,11 +49,12 @@ int main(){
     inicjalizujWiadomosc(&msg, &pacjent);
 
     // Pacjent oczekuje na rejestrację
-    printf("Pacjent %d czeka na rejestrację w kolejce.\n", msg.id_pacjent);
+    printf("\033[1;34m[Pacjent]: Pacjent %d czeka na rejestrację w kolejce.\033[0m\n", msg.id_pacjent);
+    // inna obsługa czekania w kolejce - zgodna z treścią zadania
 
         // Wyślij wiadomość do rejestracji
     if (msgsnd(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-        perror("Błąd msgsnd - pacjent");
+        perror("\033[1;31mBłąd msgsnd - pacjent\033[0m\n");
         exit(1);
     }
 
@@ -63,7 +64,7 @@ int main(){
 
 
     signalSemafor(semID, 0);    // zwolnienie semafora wejścia do budynku 
-    printf("Pacjent nr %d, wiek: %d, vip:%d wyszedł z budynku\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
+    printf("\033[1;34m[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedł z budynku\033[0m\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
 
 
     return 0;
