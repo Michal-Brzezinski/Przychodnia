@@ -25,7 +25,7 @@ int main(){
     printf("\033[1;34m[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedł do budynku\033[0m\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
     fflush(stdout);
 
-    sleep(1); // opóźnienie 5 sekund w budynku
+    //sleep(1); // opóźnienie 5 sekund w budynku
 
 
     /*  ________________________________    KOMUNIKACJA Z REJESTRACJĄ   __________________________________________*/
@@ -45,6 +45,7 @@ int main(){
         perror("\033[1;31mBłąd msgsnd - pacjent\033[0m\n");
         exit(1);
     }
+
 
     waitSemafor(semID, 1, 0);   // czeka aż przyjdzie komunikat
 

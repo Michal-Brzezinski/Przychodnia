@@ -14,18 +14,18 @@
 
 #define S 3     // ilosc semaforow w zbiorze - w razie potrzeby zwiększyć
 #define BUILDING_MAX 10     // maksymalna pojemność pacjentów w budynku 
-#define MAX_GENERATE 100    // maksymalna liczba procesów pacjentów do wygenerowania
+#define MAX_GENERATE 300    // maksymalna liczba procesów pacjentów do wygenerowania
 
 volatile sig_atomic_t keep_generating = 1;
 pid_t generator_pid = -1;
 pid_t rejestracja_pid = -1;
 
-void handle_sigchld(int sig) {
+void handle_sigchld() {
     // Obsługa zakończenia procesów potomnych
     while (waitpid(-1, NULL, WNOHANG) > 0);
 }
 
-void handle_sigint(int sig) {
+void handle_sigint() {
     keep_generating = 0;
 
     // Zakończ procesy potomne
@@ -102,7 +102,7 @@ int main(){
             while (waitpid(-1, NULL, WNOHANG) > 0);
             //prawdza, czy jakikolwiek proces potomny zakończył się, ale nie blokuje, 
             //jeśli żaden proces nie jest gotowy do zakończenia - flaga WNOHANG
-            sleep(2); // Losowe opóźnienie 0-6 sekund 
+            //sleep(2); // Losowe opóźnienie 0-6 sekund 
         }
         exit(0); // Zakończ proces potomny po wygenerowaniu pacjentów
     }
@@ -126,12 +126,23 @@ int main(){
     printGreen("[Main]: Wszystko się udało :)\n");
 
     // Czekaj na zakończenie generowania pacjentów
-    while (keep_generating) {
+    /*while (keep_generating) {
         pause(); // Czekaj na sygnał
+    }*/
+
+    int status;
+    waitpid(generator_pid, &status, 0);
+    if (WIFEXITED(status)) {
+        printf("[Main]: Proces generowania pacjentów zakończony z kodem %d.\n", WEXITSTATUS(status));
+        fflush(stdout);
+    } else {
+        printf("[Main]: Proces generowania pacjentów  zakończony niepowodzeniem.\n");
+        fflush(stdout);
     }
 
+
     // Czekaj na zakończenie procesu rejestracja
-    int status;
+    status=0;
     waitpid(rejestracja_pid, &status, 0);
     if (WIFEXITED(status)) {
         printf("[Main]: Proces rejestracji zakończony z kodem %d.\n", WEXITSTATUS(status));
@@ -140,8 +151,10 @@ int main(){
         printf("[Main]: Proces rejestracji zakończony niepowodzeniem.\n");
         fflush(stdout);
     }
-    //nie czekam na zakończenie generatora pacjentów, bo on zakończył się sam po SIGINT
+    //nie czekam na zakończenie generatora pacjentów, bo on zakończył się sam po SIGINT 
+    //lub wygenerowaniu maksymalnej liczby pacjentów
 
-    printRed("\n[Main]: Zakończono generowanie pacjentów po otrzymaniu SIGINT.");
+    // Zwolnij zasoby IPC
+    system("fish czystka.sh");
     return 0;
 }

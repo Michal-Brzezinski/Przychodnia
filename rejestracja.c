@@ -31,7 +31,7 @@ int main()
 
     // Godziny otwarcia i zamknięcia rejestracji (w sekundach od północy)
     int Tp = current_time;      // Aktualny czas
-    int Tk = current_time + 10; // Aktualny czas + 60 sekund (1 minuta)
+    int Tk = current_time + 5; // Aktualny czas + 60 sekund (1 minuta)
 
     printGreen("[Rejestracja]: Rejestracja uruchomiona, oczekuje na pacjentów");
 
@@ -43,7 +43,7 @@ int main()
         local = localtime(&now);
         current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
 
-        printf("\033[35mCzas: %02d:%02d:%02d\033[0m\n", local->tm_hour, local->tm_min, local->tm_sec);
+        //printf("\033[35mCzas: %02d:%02d:%02d\033[0m\n", local->tm_hour, local->tm_min, local->tm_sec);
 
         // Sprawdź, czy aktualny czas jest poza godzinami otwarcia
         if (current_time < Tp || current_time > Tk)
@@ -64,8 +64,8 @@ int main()
                 exit(1);
             }
 
-            printRed("[Rejestracja]: Brak pacjentów w kolejce\n");
-            sleep(4); // Czekaj 4 sekundy i sprawdź ponownie
+            //printRed("[Rejestracja]: Brak pacjentów w kolejce\n");
+            //sleep(4); // Czekaj 4 sekundy i sprawdź ponownie
             continue;
         }
 
@@ -88,7 +88,7 @@ int main()
         signalSemafor(semID, 1);
 
         // Proces rejestracji kontynuuje swoją pracę
-        sleep(4);
+        //sleep(4);
     }
     zatrzymajOkienkoNr2(); // Zatrzymaj okienko nr 2 przed zakończeniem pracy
     //
@@ -102,6 +102,8 @@ int main()
     // Wypisz pacjentów, którzy byli w kolejce do rejestracji w momencie zamykania rejestracji
     //wypiszPacjentowWKolejce(msg_id, semID);
     printYellow("Rejestracja zakończyła działanie\n");
+    
+    return 0;
 }
 
 void uruchomOkienkoNr2(int msg_id, int semID)
@@ -119,10 +121,11 @@ void uruchomOkienkoNr2(int msg_id, int semID)
             if (msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, 0) == -1)
             {
                 perror("\033[1;31m[Rejestracja]: Błąd msgrcv\033[0m");
+
                 exit(1);
             }
             printf("\033[1;32m[Rejestracja - 2 okienko]: Rejestracja pacjenta nr %d\033[0m\n", msg.id_pacjent);
-            sleep(3); // symulacja procesu rejestracji
+            //sleep(3); // symulacja procesu rejestracji
         }
     }
     else if (pid_okienka2 == -1)
