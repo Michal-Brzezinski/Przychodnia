@@ -1,15 +1,21 @@
 #include "dekoratory.h"
 
 
-int losuj_int(int N) { 
-    /* Zwraca losową wartość z zakresu od 0 do N */
-    pid_t pid = getpid();
-    srand(time(NULL)); // Inicjalizacja generatora liczb losowych
-    int losowy = rand() % (N + 1); 
-    losowy *=pid -losowy%28;
-    losowy=losowy * pid%3;
-    losowy*=pid;
-    return abs(losowy % (N + 1)); 
+int losuj_int(int N) {
+    /*Sposób losowania niezależne od czasu i w miarę możliwości niedeterministyczny*/
+    
+    int losowy;
+    unsigned int seed;
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd < 0) {
+        return -1; // Obsłuż błąd otwarcia pliku
+    }
+    read(fd, &seed, sizeof(seed)); // Pobierz losowe dane z /dev/urandom
+    close(fd);
+
+    srand(seed);
+    losowy = rand() % (N + 1);
+    return losowy;
 }
 
 

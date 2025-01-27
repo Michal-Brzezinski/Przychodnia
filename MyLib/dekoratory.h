@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <errno.h>
+#include <fcntl.h>
 
 const  static char *czerwony = "\033[1;31m";    // Czerwony kolor
 const static char *zielony = "\033[1;32m";  // Zielony kolor
