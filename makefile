@@ -15,7 +15,7 @@ MyLib/sem_utils.o: MyLib/sem_utils.c MyLib/sem_utils.h
 
 # Kompilowanie programu pacjent
 pacjent: pacjent.o MyLib/sem_utils.o MyLib/msg_utils.o MyLib/dekoratory.o
-	@gcc -o pacjent $^
+	@gcc -o pacjent $^ -lpthread
 
 # Kompilowanie pliku pacjent.o
 pacjent.o: pacjent.c MyLib/sem_utils.h MyLib/msg_utils.h MyLib/dekoratory.h pacjent.h

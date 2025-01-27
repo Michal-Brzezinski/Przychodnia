@@ -5,6 +5,8 @@
 #include <sys/ipc.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <time.h>
+#include <errno.h>
 
 const  static char *czerwony = "\033[1;31m";    // Czerwony kolor
 const static char *zielony = "\033[1;32m";  // Zielony kolor

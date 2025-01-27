@@ -17,7 +17,7 @@ void *dziecko(void *arg) {
 
     // Dziecko czeka na sygnał od opiekuna
     waitSemafor(dane->semID, 1, 0);
-    printf("\033[1;34m[Dziecko]: Pacjent nr %d wszedł do rejestracji z opiekunem.\033[0m\n",
+    printf("\033[1;34m[Pacjent]: Pacjent %d czeka na rejestrację w kolejce z opiekunem.\033[0m\n",
            dane->pacjent->id_pacjent);
     fflush(stdout);
 

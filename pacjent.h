@@ -8,6 +8,8 @@
 #include <errno.h>
 #include <signal.h>
 
+#include <pthread.h>
+
 #define S 3 // ilosc semaforow w zbiorze
 
 typedef struct {
@@ -31,7 +33,7 @@ void inicjalizujPacjenta(Pacjent *pacjent){
 
     pacjent->id_pacjent = getpid();
 
-    int pomocnicza_vip = losuj_int(100);
+    int pomocnicza_vip = losuj_int(100); // 0-99
     if (pomocnicza_vip < 20)  pacjent->vip = 1; // 20% szans
     else pacjent->vip  = 0; // 80% szans
 

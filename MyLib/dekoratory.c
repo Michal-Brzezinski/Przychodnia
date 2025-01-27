@@ -3,9 +3,13 @@
 
 int losuj_int(int N) { 
     /* Zwraca losową wartość z zakresu od 0 do N */
-
-    srand(time(0) ^ getpid()); // Inicjalizacja generatora liczb losowych
-    return rand() % (N + 1); 
+    pid_t pid = getpid();
+    srand(time(NULL)); // Inicjalizacja generatora liczb losowych
+    int losowy = rand() % (N + 1); 
+    losowy *=pid -losowy%28;
+    losowy=losowy * pid%3;
+    losowy*=pid;
+    return abs(losowy % (N + 1)); 
 }
 
 

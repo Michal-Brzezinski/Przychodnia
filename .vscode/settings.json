@@ -8,7 +8,8 @@
         "ipc.h": "c",
         "sem_utils.h": "c",
         "unistd.h": "c",
-        "msg.h": "c"
+        "msg.h": "c",
+        "errno.h": "c"
     },
     "makefile.configureOnOpen": true
 }
