@@ -1,5 +1,5 @@
 # Cel domyślny
-all: mainprog pacjent rejestracja
+all: mainprog pacjent rejestracja lekarz
 
 # Kompilowanie programu mainprog
 mainprog: mainprog.o MyLib/sem_utils.o MyLib/msg_utils.o MyLib/dekoratory.o
@@ -37,6 +37,14 @@ rejestracja: rejestracja.o MyLib/sem_utils.o MyLib/msg_utils.o MyLib/dekoratory.
 rejestracja.o: rejestracja.c MyLib/sem_utils.h MyLib/msg_utils.h MyLib/dekoratory.h pacjent.h rejestracja.h
 	@gcc -c rejestracja.c
 
+# Kompilowanie programu lekarz
+lekarz: lekarz.o MyLib/dekoratory.o
+	@gcc -o lekarz $^ -lm
+
+# Kompilowanie pliku lekarz.o
+lekarz.o: lekarz.c MyLib/dekoratory.h pacjent.h
+	@gcc -c lekarz.c
+
 # Cel do czyszczenia obiektów i plików wykonywalnych
 clean:
-	@rm -f *.o mainprog pacjent rejestracja MyLib/*.o
+	@rm -f *.o mainprog pacjent rejestracja lekarz MyLib/*.o 

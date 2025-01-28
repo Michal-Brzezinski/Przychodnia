@@ -51,7 +51,6 @@ int main(){
     // _______________________________  DOSTANIE SIĘ DO BUDYNKU     _______________________________________
     
     if(pacjent.wiek >= 18){
-    printf("%d", valueSemafor(semID, 0));
     printf("\033[1;34m[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d próbuje wejść do budynku\033[0m\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
     fflush(stdout);}
     else{
@@ -66,23 +65,23 @@ int main(){
     if(pacjent.wiek >= 18){
     printf("\033[1;34m[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedł do budynku\033[0m\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
     fflush(stdout);
-    printf("%d", valueSemafor(semID, 0));}
+    }
     else{
     printf("\033[1;34m[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedł do budynku pod opieką\033[0m\n",msg.id_pacjent, msg.wiek, msg.vip);
     fflush(stdout);}
 
-    sleep(1); // opóźnienie 5 sekund w budynku
+    //sleep(1); // opóźnienie 5 sekund w budynku
 
     //  ________________________________    KOMUNIKACJA Z REJESTRACJĄ   __________________________________________
 
 
         // Pacjent oczekuje na rejestrację
     if(pacjent.wiek >= 18){
-    printf("\033[1;34m[Pacjent]: Pacjent %d czeka na rejestrację w kolejce.\033[0m\n", msg.id_pacjent);
+    printf("\033[1;34m[Pacjent]: Pacjent %d czeka na rejestrację w kolejce do lekarza: %d.\033[0m\n", msg.id_pacjent, msg.id_lekarz);
     fflush(stdout);
-    printf("%d", valueSemafor(semID, 0));}
+    }
     else{
-    printf("\033[1;34m[Pacjent]: Pacjent %d czeka z opiekunem na rejestrację w kolejce.\033[0m\n", msg.id_pacjent);
+    printf("\033[1;34m[Pacjent]: Pacjent %d czeka z opiekunem na rejestrację w kolejce do lekarza: %d.\033[0m\n", msg.id_pacjent, msg.id_lekarz);
     fflush(stdout);}
 
         // Wyślij wiadomość do rejestracji
@@ -94,7 +93,6 @@ int main(){
     waitSemafor(semID, 1, 0);   // czeka aż przyjdzie komunikat
 
 
-    sleep(2);
     if(valueSemafor(semID, 2)==1)   signalSemafor(semID, 0);    // zwolnienie semafora wejścia do budynku
     if(pacjent.wiek >= 18){
     printf("\033[1;34m[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedł z budynku\033[0m\n",msg.id_pacjent, msg.wiek, msg.vip);
@@ -148,7 +146,7 @@ void *dziecko(void* _wat){
     // pozwala na anulowanie wątku w dowolnym momencie (asynchronicznie)
 
     int *pid = (int *)_wat;
-    printf("\033[1;32m[Dziecko]: Wątek dziecka nr %d się bawi.\033[0m\n", *pid);
+    printf("\033[1;36m[Dziecko]: Wątek dziecka nr %d się bawi.\033[0m\n", *pid);
     
     while (!zakoncz_program) {
         // Czekaj na sygnał od wątku głównego
@@ -159,7 +157,7 @@ void *dziecko(void* _wat){
         }   
     }
 
-    printf("\033[1;32m[Dziecko]: Wątek dziecka nr %d przestał się bawić.\033[0m\n", *pid);
+    printf("\033[1;36m[Dziecko]: Wątek dziecka nr %d przestał się bawić.\033[0m\n", *pid);
     return NULL;
 
 }

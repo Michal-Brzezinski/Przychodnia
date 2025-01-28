@@ -2,10 +2,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <math.h>
 
 #include "MyLib/dekoratory.h"
 
-// zorientować się od jakiego numeru zaczyna się numerowanie lekarzy w losowaniu w pacjencie 
+// Definicja typu wyliczeniowego dla lekarzy
 enum lekarze{ 
     POZ = 1, 
     KARDIOLOG, 
@@ -24,6 +25,7 @@ typedef struct{
 }Lekarz;
 
 void inicjalizuj_lekarza(Lekarz* lekarz, int id_lekarz, int limit_pacjentow){
+    /*Funkcja inicjalizuje strukturę lekarza*/
 
     lekarz->id_lekarz = id_lekarz;
     lekarz->licznik_pacjentow = 0;
@@ -50,4 +52,13 @@ void inicjalizuj_lekarza(Lekarz* lekarz, int id_lekarz, int limit_pacjentow){
         break;
     }
 
+}
+
+int procentNaNaturalna(int n, int x) {
+    /*Funckcja oblicza x% liczby n, zwracając wynik jako liczbę całkowitą*/
+    double procent = (double)x / 100.0; // Konwersja procentów na ułamek
+    double s = floor(n * procent); 
+    // Obliczenie x% liczby n i zaokrąglenie do najniższej liczby całkowitej
+    // To gwarantuje nie wyjść poza zakres podany w argumencie funkcji
+    return (int)s; // Zwrócenie jako liczba całkowita
 }

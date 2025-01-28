@@ -24,7 +24,7 @@
 
 #define S 3     // ilosc semaforow w zbiorze - w razie potrzeby zwiększyć
 #define BUILDING_MAX 10     // maksymalna pojemność pacjentów w budynku 
-#define MAX_GENERATE 300    // maksymalna liczba procesów pacjentów do wygenerowania
+#define MAX_GENERATE 100   // maksymalna liczba procesów pacjentów do wygenerowania
 
 volatile sig_atomic_t keep_generating = 1;
 pid_t generator_pacjentow_pid = -1;
@@ -46,16 +46,16 @@ void handle_sigint(int sig) {
         kill(generator_pacjentow_pid, SIGTERM);
     }
 
-    //if (generator_lekarzy_pid > 0) {
-      //kill(generator_lekarzy_pid, SIGTERM);
-    //}
+    if (generator_lekarzy_pid > 0) {
+      kill(generator_lekarzy_pid, SIGTERM);
+    }
 
     if (rejestracja_pid > 0) {
         kill(rejestracja_pid, SIGTERM);
     }
 
     // Zwolnij zasoby IPC
-    system("fish czystka.sh");
+    system("ipcrm -a");
 
     printRed("\n[Main]: Zakończono generowanie pacjentów po otrzymaniu SIGINT.");
     exit(0);
@@ -64,7 +64,7 @@ void handle_sigint(int sig) {
 
 int main(){
 
-    /*  --------------------  INICJALIZACJA ZASOBÓW IPC   -----------------   */
+    //  --------------------  INICJALIZACJA  -----------------   
 
     int i;  // zmienna iteracyjna 
     key_t klucz_wejscia =  generuj_klucz_ftok(".", 'A');   // do semafora panującego nad ilością pacjentów w budynku
@@ -75,7 +75,7 @@ int main(){
     inicjalizujSemafor(semID,2,1);  // semafor mówiący, że rejestracja jest zamknięta
 
 
-    /*  -------------------   OBSŁUGA SYGNAŁÓW    --------------------------*/
+    //  -------------------   OBSŁUGA SYGNAŁÓW    --------------------------
 
     // Ustawienie obsługi sygnału SIGINT
     signal(SIGINT, handle_sigint);
@@ -88,12 +88,12 @@ int main(){
     // SA_NONLDSTOP - nie wysyłać sygnału SIGCHLD, gdy dziecko zatrzyma się
     // SA_RESTART - automatycznie wznowić przerwane wywołania systemowe
     if (sigaction(SIGCHLD, &sa, 0) == -1) {
-        perror("sigaction");
+        perror("[Main]: sigaction");
         exit(1);
     }
 
 
-    /*---------------------------   GENEROWANIE PACJENTÓW     -------------------------------*/
+    //---------------------------   PACJENCI     -------------------------------
 
     // Utwórz proces potomny do generowania pacjentów
     // Aby proces rodzic mógł wykonywać inne zadania
@@ -119,12 +119,12 @@ int main(){
             while (waitpid(-1, NULL, WNOHANG) > 0);
             //prawdza, czy jakikolwiek proces potomny zakończył się, ale nie blokuje, 
             //jeśli żaden proces nie jest gotowy do zakończenia - flaga WNOHANG
-            sleep(2); // Losowe opóźnienie 0-6 sekund 
+            //sleep(2); // Losowe opóźnienie 0-6 sekund 
         }
         exit(0); // Zakończ proces potomny po wygenerowaniu pacjentów
     }
 
-    /*-----------------------   REJESTRACJA  -------------------------------*/
+    //-----------------------   REJESTRACJA  -------------------------------
 
     switch (fork()) {
         case -1:
@@ -143,39 +143,58 @@ int main(){
 
 
     /*--------------------------    LEKARZE   ---------------------------------------*/
-    /*
-    generator_lekarzy_pid = fork();
+        generator_lekarzy_pid = fork();
     if (generator_lekarzy_pid == -1) {
         perror("[Main]: Błąd fork dla generatora lekarzy\n");
         exit(2);
     } else if (generator_lekarzy_pid == 0) {
         // Proces potomny: generowanie lekarzy
         // Teoretycznie ma ten sam handler zakończenia procesów dzieci
-        for (i = 0; i < 5; i++) {
+        int limit_pacjentow = losuj_int(MAX_GENERATE/2)+MAX_GENERATE/2; // Losowy limit pacjentów dla wszystkich lekarzy
+        printf("[Main]: Maksymalna liczba pacjentów do przyjęcia to %d\n", limit_pacjentow);
+        char arg1[2];   // arg1 to id lekarza
+        char arg2[10];    // arg2 to limit pacjentów dla wszystkich lekarzy
+        sprintf(arg2, "%d", limit_pacjentow);   // Konwersja liczby na ciąg znaków
+
+        for (i = 1; i < 6; i++) {
+            sprintf(arg1, "%d", i); // Konwersja liczby na ciąg znaków
+            
             pid_t pid = fork();
             if (pid == -1) {
                 perror("[Main]: Błąd fork (generator lekarzy) - próbuj generować lekarzy dalej\n");
                 break;
             } else if (pid == 0) {
-                execl("./lekarz", "lekarz",i ,NULL);
+                execl("./lekarz", "lekarz", arg1, arg2, NULL);
+                // 1. argument to id lekarza, 2. argument to limit pacjentów dla wszystkich lekarzy losowo wygenerowany
                 perror("[Main]: Błąd execl dla lekarza\n");
                 exit(2);
             } 
             // Proces rodzic: sprawdź zakończenie procesu potomnego bez blokowania
             while (waitpid(-1, NULL, WNOHANG) > 0);
-            //prawdza, czy jakikolwiek proces potomny zakończył się, ale nie blokuje, 
-            //jeśli żaden proces nie jest gotowy do zakończenia - flaga WNOHANG
-            sleep(2); // Losowe opóźnienie 0-6 sekund 
+            // sprawdza, czy jakikolwiek proces potomny zakończył się, ale nie blokuje, 
+            // jeśli żaden proces nie jest gotowy do zakończenia - flaga WNOHANG
+            //sleep(2); // Losowe opóźnienie 
         }
         exit(0); // Zakończ proces potomny po wygenerowaniu pacjentów
     }
-    */
+    
 
     /*  -----------   OBSŁUGA POMYŚLNEGO ZAKOŃCZENIA PROGRAMU    ----------- */
     /*   ---------- (ZWOLNIENIE ZASOBÓW I CZEKANIE NA PROCESY) -----------   */
 
-    // Czekaj na zakończenie procesu generowania pacjentów, jeśli nie został zakończony wcześniej
+    // Czekaj na zakończenie procesu generowania lekarzy, jeśli nie został zakończony wcześniej
     int status;
+    waitpid(generator_lekarzy_pid, &status, 0);
+    if (WIFEXITED(status)) {
+        printf("[Main]: Proces generowania lekarzy zakończony z kodem %d.\n", WEXITSTATUS(status));
+        fflush(stdout);
+    } else {
+        printf("[Main]: Proces generowania lekarzy  zakończony niepowodzeniem.\n");
+        fflush(stdout);
+    }
+
+    // Czekaj na zakończenie procesu generowania pacjentów, jeśli nie został zakończony wcześniej
+    status =0;
     waitpid(generator_pacjentow_pid, &status, 0);
     if (WIFEXITED(status)) {
         printf("[Main]: Proces generowania pacjentów zakończony z kodem %d.\n", WEXITSTATUS(status));
@@ -197,6 +216,6 @@ int main(){
     }
 
     // Zwolnij zasoby IPC
-    system("fish czystka.sh");
+    system("ipcrm -a");
     return 0;
 }
