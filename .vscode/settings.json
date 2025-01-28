@@ -11,5 +11,6 @@
         "msg.h": "c",
         "errno.h": "c"
     },
-    "makefile.configureOnOpen": true
+    "makefile.configureOnOpen": true,
+    "C_Cpp.errorSquiggles": "enabled"
 }

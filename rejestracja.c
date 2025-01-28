@@ -31,7 +31,7 @@ int main()
 
     // Godziny otwarcia i zamknięcia rejestracji (w sekundach od północy)
     int Tp = current_time;      // Aktualny czas
-    int Tk = current_time + 5; // Aktualny czas + 60 sekund (1 minuta)
+    int Tk = current_time + 20; // Aktualny czas + 60 sekund (1 minuta)
 
     printGreen("[Rejestracja]: Rejestracja uruchomiona, oczekuje na pacjentów");
 
@@ -65,7 +65,7 @@ int main()
             }
 
             //printRed("[Rejestracja]: Brak pacjentów w kolejce\n");
-            //sleep(4); // Czekaj 4 sekundy i sprawdź ponownie
+            sleep(4); // Czekaj 4 sekundy i sprawdź ponownie
             continue;
         }
 
@@ -88,7 +88,7 @@ int main()
         signalSemafor(semID, 1);
 
         // Proces rejestracji kontynuuje swoją pracę
-        //sleep(4);
+        sleep(4);
     }
     zatrzymajOkienkoNr2(); // Zatrzymaj okienko nr 2 przed zakończeniem pracy
     //
@@ -125,7 +125,7 @@ void uruchomOkienkoNr2(int msg_id, int semID)
                 exit(1);
             }
             printf("\033[1;32m[Rejestracja - 2 okienko]: Rejestracja pacjenta nr %d\033[0m\n", msg.id_pacjent);
-            //sleep(3); // symulacja procesu rejestracji
+            sleep(3); // symulacja procesu rejestracji
         }
     }
     else if (pid_okienka2 == -1)

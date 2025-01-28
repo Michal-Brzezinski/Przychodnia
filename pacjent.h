@@ -7,7 +7,14 @@
 #include <sys/msg.h>
 #include <errno.h>
 #include <signal.h>
-
+#ifndef SA_RESTART
+#define SA_RESTART 0x10000000   
+#endif
+// w razie braku definicji w systemie (np. u mnie się jakieś błędy pojawiały)
+#ifndef SA_NOCLDSTOP
+#define SA_NOCLDSTOP 0x00000001 
+#endif
+#include <semaphore.h> //semafory POSIX dla wątków
 #include <pthread.h>
 
 #define S 3 // ilosc semaforow w zbiorze
@@ -39,7 +46,12 @@ void inicjalizujPacjenta(Pacjent *pacjent){
 
     pacjent->wiek = losuj_int(100); // Wiek 0-100 lat
 
-    pacjent->id_lekarz = losuj_int(4)+1; // id od 1-5
+    int pomocnicza_lekarz = losuj_int(100); // 0-99
+    if (pomocnicza_lekarz < 60) pacjent->id_lekarz = 1; // 60% szans
+    else if (pomocnicza_lekarz < 70) pacjent->id_lekarz = 2; // 10% szans
+    else if (pomocnicza_lekarz < 80) pacjent->id_lekarz = 3; // 10% szans
+    else if (pomocnicza_lekarz < 90) pacjent->id_lekarz = 4; // 10% szans
+    else pacjent->id_lekarz = 5; // 10% szans
 
 }
 
