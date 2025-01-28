@@ -12,6 +12,31 @@ int alokujKolejkeKomunikatow(key_t klucz, int flagi){
     return msgID;
 }
 
+
+int zwolnijKolejkeKomunikatow(key_t klucz) {
+    int msgid;
+
+    // Próba uzyskania identyfikatora kolejki komunikatów
+    msgid = msgget(klucz, 0666);
+    if (msgid == -1) {
+        if (errno == ENOENT) {
+            return 0; // Kolejka nie istnieje
+        } else {
+            perror("msgget failed");
+            exit(1);
+        }
+    }
+
+    // Kolejka komunikatów istnieje, więc próbujemy ją usunąć
+    if (msgctl(msgid, IPC_RMID, NULL) == -1) {
+        perror("Blad msgctl (zwolnijKolejkeKomunikatow)");
+        exit(1);
+    }
+
+    return 0;
+
+}
+
 /*
 int wyslijKomunikat(int msg_id, const void *wskaznik_msg, size_t rozmiar_msg, int flagi){
 

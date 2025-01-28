@@ -62,3 +62,6 @@ int procentNaNaturalna(int n, int x) {
     // To gwarantuje nie wyjść poza zakres podany w argumencie funkcji
     return (int)s; // Zwrócenie jako liczba całkowita
 }
+
+
+void czynnosci_lekarskie(Lekarz *lekarz);

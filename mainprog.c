@@ -20,16 +20,23 @@
 #include <signal.h>
 
 #include "MyLib/sem_utils.h"
+#include "MyLib/msg_utils.h"
 #include "MyLib/dekoratory.h"
 
 #define S 3     // ilosc semaforow w zbiorze - w razie potrzeby zwiększyć
 #define BUILDING_MAX 10     // maksymalna pojemność pacjentów w budynku 
-#define MAX_GENERATE 100   // maksymalna liczba procesów pacjentów do wygenerowania
+#define MAX_GENERATE 15   // maksymalna liczba procesów pacjentów do wygenerowania
 
 volatile sig_atomic_t keep_generating = 1;
 pid_t generator_pacjentow_pid = -1;
 pid_t generator_lekarzy_pid = -1;
 pid_t rejestracja_pid = -1;
+
+int semID;  // id zbioru semaforów
+int msg_id1; // id 1. kolejki komunikatów
+key_t klucz_wejscia; // klucz do semafora panującego nad ilością pacjentów w budynku
+key_t msg_key1; // klucz do 1. kolejki komunikatów
+
 
 
 /*  --------------   FUNKCJE OBSLUGI SYGNAŁÓW   -------------    */
@@ -55,9 +62,11 @@ void handle_sigint(int sig) {
     }
 
     // Zwolnij zasoby IPC
-    system("ipcrm -a");
+    zwolnijSemafor(klucz_wejscia);
+    zwolnijKolejkeKomunikatow(msg_key1);
+    system("bash czystka.sh");
 
-    printRed("\n[Main]: Zakończono generowanie pacjentów po otrzymaniu SIGINT.");
+    printRed("\n[Main]: Zakończono program po otrzymaniu SIGINT.");
     exit(0);
 }
 
@@ -68,7 +77,10 @@ int main(){
 
     int i;  // zmienna iteracyjna 
     key_t klucz_wejscia =  generuj_klucz_ftok(".", 'A');   // do semafora panującego nad ilością pacjentów w budynku
-    int semID = alokujSemafor(klucz_wejscia, S, IPC_CREAT | IPC_EXCL | 0666);
+    semID = alokujSemafor(klucz_wejscia, S, IPC_CREAT | IPC_EXCL | 0600);
+
+    key_t msg_key1 = generuj_klucz_ftok(".",'B');
+    msg_id1 = alokujKolejkeKomunikatow(msg_key1,IPC_CREAT | 0600);
 
     inicjalizujSemafor(semID,0,BUILDING_MAX); // semafor zainicjalizowany na maksymalną liczbe pacjentów w budynku
     inicjalizujSemafor(semID,1,0);  //potrzebny, aby proces czekał na potwierdzenie przyjęcia
@@ -215,7 +227,9 @@ int main(){
         fflush(stdout);
     }
 
-    // Zwolnij zasoby IPC
-    system("ipcrm -a");
+    zwolnijSemafor(klucz_wejscia);
+    zwolnijKolejkeKomunikatow(msg_key1);
+    system("bash czystka.sh");
+
     return 0;
 }

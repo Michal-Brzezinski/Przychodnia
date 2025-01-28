@@ -23,6 +23,7 @@ int main(){
     sigaction(SIGINT, &sa, NULL);
 
     // Inicjalizacja semafora wątków
+    // Mogę tutaj inicjalizować semafor, bo wątki są w jednym procesie
     sem_init(&opiekun_semafor, 0, 0);
 
     // ----------- inicjalizacja wartości struktury pacjenta

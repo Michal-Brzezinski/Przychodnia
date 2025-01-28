@@ -13,9 +13,28 @@ int alokujSemafor(key_t klucz, int number, int flagi)
    return semID;
 }
 
-int zwolnijSemafor(int semID, int number)
+void zwolnijSemafor(key_t key)
 {
-   return semctl(semID, number, IPC_RMID, NULL);
+   int semid;
+
+   // Próba uzyskania identyfikatora zbioru semaforów
+   semid = semget(key, 0, 0666);
+   if (semid == -1) {
+      if (errno == ENOENT) {
+            return;
+      } else {
+            perror("Błąd 1 usuwania zbioru semaforów");
+            exit(1);
+      }
+   }
+
+   // Zbiór semaforów istnieje, więc próbujemy go usunąć
+   if (semctl(semid, 0, IPC_RMID) == -1) {
+      perror("Błąd 2 usuwania zbioru semaforów");
+      exit(1);
+   }
+
+   return;
 }
 
 void inicjalizujSemafor(int semID, int number, int val)

@@ -8,7 +8,7 @@
 
 int alokujSemafor(key_t klucz, int number, int flagi);
 void inicjalizujSemafor(int semID, int number, int val);
-int zwolnijSemafor(int semID, int number);
+void zwolnijSemafor(int semID);
 int waitSemafor(int semID, int number, int flags);
 void signalSemafor(int semID, int number);
 int valueSemafor(int semID, int number);
