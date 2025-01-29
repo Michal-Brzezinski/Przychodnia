@@ -17,7 +17,7 @@
 #include <semaphore.h> //semafory POSIX dla wątków
 #include <pthread.h>
 
-#define S 3 // ilosc semaforow w zbiorze
+#define S 5 // ilosc semaforow w zbiorze
 
 typedef struct {
     int id_pacjent; // numer pacjenta - pid
@@ -42,7 +42,9 @@ void inicjalizujPacjenta(Pacjent *pacjent){
 
     int pomocnicza_vip = losuj_int(100); // 0-99
     if (pomocnicza_vip < 20)  pacjent->vip = 1; // 20% szans
-    else pacjent->vip  = 0; // 80% szans
+    else pacjent->vip  = 2; // 80% szans
+    /*WARTO ZWRÓCIĆ UWAGĘ, ŻE WARTOŚĆ VIP BĘDZIE 0 DLA PACJENTÓW
+    KTÓRZY WRACAJĄ Z BADAŃ AMBULATORYJNYCH*/
 
     pacjent->wiek = losuj_int(100); // Wiek 0-100 lat
 

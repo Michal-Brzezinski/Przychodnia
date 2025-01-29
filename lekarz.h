@@ -2,9 +2,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <math.h>
+#include <time.h>
 
 #include "MyLib/dekoratory.h"
+#include "MyLib/msg_utils.h"
+#include "MyLib/sem_utils.h"
+#include "MyLib/shm_utils.h"
+
+#define PAM_SIZE 7 // Rozmiar tablicy pamieci wspoldzielonej
+// struktura pamieci wspoldzielonej
+// pamiec_wspoldzielona[0] - wspolny licznik pacjentow
+// pamiec_wspoldzielona[1-5] - limity pacjentow dla lekarzy
+// pamiec_wspoldzielona[6] - licznik procesów, które zapisały do pamięci dzielonej
+#define S 5 // Ilość semaforów w zbiorze
 
 // Definicja typu wyliczeniowego dla lekarzy
 enum lekarze{ 
@@ -23,6 +33,15 @@ typedef struct{
     int indywidualny_limit;
 
 }Lekarz;
+
+typedef struct {
+    long mtype;       // Typ wiadomości
+    int id_pacjent;   // Numer pacjenta
+    int vip;          // Status VIP
+    int wiek;         // Wiek pacjenta
+    int id_lekarz;    // Numer preferowanego lekarza  
+} Wiadomosc;
+//  struktura wiadomości w rejestracji
 
 void inicjalizuj_lekarza(Lekarz* lekarz, int id_lekarz, int limit_pacjentow){
     /*Funkcja inicjalizuje strukturę lekarza*/
@@ -52,15 +71,6 @@ void inicjalizuj_lekarza(Lekarz* lekarz, int id_lekarz, int limit_pacjentow){
         break;
     }
 
-}
-
-int procentNaNaturalna(int n, int x) {
-    /*Funckcja oblicza x% liczby n, zwracając wynik jako liczbę całkowitą*/
-    double procent = (double)x / 100.0; // Konwersja procentów na ułamek
-    double s = floor(n * procent); 
-    // Obliczenie x% liczby n i zaokrąglenie do najniższej liczby całkowitej
-    // To gwarantuje nie wyjść poza zakres podany w argumencie funkcji
-    return (int)s; // Zwrócenie jako liczba całkowita
 }
 
 

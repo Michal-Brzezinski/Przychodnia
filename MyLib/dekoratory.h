@@ -8,6 +8,7 @@
 #include <time.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <math.h>
 
 const  static char *czerwony = "\033[1;31m";    // Czerwony kolor
 const static char *zielony = "\033[1;32m";  // Zielony kolor
@@ -24,3 +25,4 @@ void printRed(const char *tekst);
 void printBlue(const char *tekst);
 void printGreen(const char *tekst);
 void printYellow(const char *tekst);
+int procentNaNaturalna(int n, int x);

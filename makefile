@@ -2,11 +2,11 @@
 all: mainprog pacjent rejestracja lekarz
 
 # Kompilowanie programu mainprog
-mainprog: mainprog.o MyLib/sem_utils.o MyLib/msg_utils.o MyLib/dekoratory.o
-	@gcc -o mainprog $^
+mainprog: mainprog.o MyLib/sem_utils.o MyLib/msg_utils.o MyLib/dekoratory.o MyLib/shm_utils.o
+	@gcc -o mainprog $^ -lm  # Dodanie -lm tutaj
 
 # Kompilowanie pliku mainprog.o
-mainprog.o: mainprog.c MyLib/sem_utils.h MyLib/msg_utils.h MyLib/dekoratory.h
+mainprog.o: mainprog.c MyLib/sem_utils.h MyLib/msg_utils.h MyLib/dekoratory.h MyLib/shm_utils.h
 	@gcc -c mainprog.c
 
 # Kompilowanie MyLib/sem_utils.o
@@ -15,7 +15,7 @@ MyLib/sem_utils.o: MyLib/sem_utils.c MyLib/sem_utils.h
 
 # Kompilowanie programu pacjent
 pacjent: pacjent.o MyLib/sem_utils.o MyLib/msg_utils.o MyLib/dekoratory.o
-	@gcc -o pacjent $^ -lpthread
+	@gcc -o pacjent $^ -lpthread -lm  # Dodanie -lm tutaj
 
 # Kompilowanie pliku pacjent.o
 pacjent.o: pacjent.c MyLib/sem_utils.h MyLib/msg_utils.h MyLib/dekoratory.h pacjent.h
@@ -27,24 +27,28 @@ MyLib/msg_utils.o: MyLib/msg_utils.c MyLib/msg_utils.h
 
 # Kompilowanie MyLib/dekoratory.o
 MyLib/dekoratory.o: MyLib/dekoratory.c MyLib/dekoratory.h
-	@gcc -c -o MyLib/dekoratory.o MyLib/dekoratory.c
+	@gcc -c -o MyLib/dekoratory.o MyLib/dekoratory.c -lm  # Dodanie -lm tutaj
+
+# Kompilowanie MyLib/shm_utils.o
+MyLib/shm_utils.o: MyLib/shm_utils.c MyLib/shm_utils.h
+	@gcc -c -o MyLib/shm_utils.o MyLib/shm_utils.c
 
 # Kompilowanie programu rejestracja
-rejestracja: rejestracja.o MyLib/sem_utils.o MyLib/msg_utils.o MyLib/dekoratory.o
-	@gcc -o rejestracja $^
+rejestracja: rejestracja.o MyLib/sem_utils.o MyLib/msg_utils.o MyLib/dekoratory.o MyLib/shm_utils.o
+	@gcc -o rejestracja $^ -lm  # Dodanie -lm tutaj
 
 # Kompilowanie pliku rejestracja.o
-rejestracja.o: rejestracja.c MyLib/sem_utils.h MyLib/msg_utils.h MyLib/dekoratory.h pacjent.h rejestracja.h
+rejestracja.o: rejestracja.c MyLib/sem_utils.h MyLib/msg_utils.h MyLib/shm_utils.h MyLib/dekoratory.h pacjent.h rejestracja.h
 	@gcc -c rejestracja.c
 
 # Kompilowanie programu lekarz
-lekarz: lekarz.o MyLib/dekoratory.o
-	@gcc -o lekarz $^ -lm
+lekarz: lekarz.o MyLib/dekoratory.o MyLib/sem_utils.o MyLib/msg_utils.o MyLib/shm_utils.o
+	@gcc -o lekarz $^ -lm  # Dodanie -lm tutaj
 
 # Kompilowanie pliku lekarz.o
-lekarz.o: lekarz.c MyLib/dekoratory.h pacjent.h
+lekarz.o: lekarz.c MyLib/dekoratory.h MyLib/sem_utils.h MyLib/msg_utils.h lekarz.h MyLib/shm_utils.h
 	@gcc -c lekarz.c
 
 # Cel do czyszczenia obiektów i plików wykonywalnych
 clean:
-	@rm -f *.o mainprog pacjent rejestracja lekarz MyLib/*.o 
+	@rm -f *.o mainprog pacjent rejestracja lekarz MyLib/*.o

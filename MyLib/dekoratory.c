@@ -18,6 +18,14 @@ int losuj_int(int N) {
     return losowy;
 }
 
+int procentNaNaturalna(int n, int x) {
+    /*Funckcja oblicza x% liczby n, zwracając wynik jako liczbę całkowitą*/
+    double procent = (double)x / 100.0; // Konwersja procentów na ułamek
+    double s = floor(n * procent); 
+    // Obliczenie x% liczby n i zaokrąglenie do najniższej liczby całkowitej
+    // To gwarantuje nie wyjść poza zakres podany w argumencie funkcji
+    return (int)s; // Zwrócenie jako liczba całkowita
+}
 
 key_t generuj_klucz_ftok(const char *sciezka, char projek_id) { 
     /* Sprawdza czy zaistniał błąd, jeżeli tak to kończy proces z kodem 1 */

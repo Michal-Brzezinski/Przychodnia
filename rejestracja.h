@@ -13,10 +13,13 @@
 #include <time.h>
 
 #include "MyLib/sem_utils.h"
+#include "MyLib/msg_utils.h"
 #include "MyLib/dekoratory.h"
+#include "MyLib/shm_utils.h"
 
 #define BUILDING_MAX 10 // Maksymalna liczba pacjentów w budynku
-#define S 3 // Ilość semaforów w zbiorze
+#define S 5 // Ilość semaforów w zbiorze
+#define PAM_SIZE 6 // Rozmiar tablicy pamieci wspoldzielonej
 
 typedef struct {
     long mtype;       // Typ wiadomości

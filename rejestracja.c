@@ -1,6 +1,3 @@
-#include "MyLib/sem_utils.h"
-#include "MyLib/msg_utils.h"
-#include "MyLib/dekoratory.h"
 #include "rejestracja.h"
 
 int msg_id;
@@ -10,14 +7,49 @@ volatile int running = 1; // Flaga do sygnalizowania zakończenia
 // Zmienna globalna do przechowywania pid procesu okienka nr 2
 pid_t pid_okienka2 = -1;
 
+int *pamiec_wspoldzielona;  // Wskaźnik do pamięci współdzielonej
+int shmID;
+key_t klucz_pamieci;
+
+int limity_lekarzy[5] = {0}; // Tablica przechowująca limity pacjentów dla lekarzy
+
 void uruchomOkienkoNr2(int msg_id, int semID);
 
 void zatrzymajOkienkoNr2();
 
-int main()
+int main(int argc, char *argv[])
 {
 
+    if (argc != 2)
+    {
+        perror("\033[1;31m[Rejestracja]: Nieprawidłowa liczba argumentów\033[0m\n");
+        exit(1);
+    }
+
     printGreen("[Rejestracja]: Uruchomiono rejestrację");
+
+    int limit_pacjentow = atoi(argv[1]);
+    limity_lekarzy[0] = procentNaNaturalna(limit_pacjentow, 60); // Limit pacjentów dla lekarza POZ
+    int procent10 = procentNaNaturalna(limit_pacjentow, 10);
+    for (int i = 1; i < 5; i++)
+    {
+        limity_lekarzy[i] = procent10;
+    }
+
+    print_fflush("Odczytane limity lekarzy to:");
+    fflush(stdout);
+    printf("\033[1;38mWSZYSCY: \t%d\033[0m\n", limit_pacjentow);
+    fflush(stdout);
+    printf("\033[1;38mPOZ:\t%d\033[0m\n",limity_lekarzy[0]);
+    fflush(stdout);
+    printf("\033[1;38mKARDIOLOG:\t%d\033[0m\n",limity_lekarzy[1]);
+    fflush(stdout);
+    printf("\033[1;38mOKULISTA:\t%d\033[0m\n",limity_lekarzy[2]);
+    fflush(stdout);
+    printf("\033[1;38mPEDIATRA:\t%d\033[0m\n",limity_lekarzy[3]);
+    fflush(stdout);
+    printf("\033[1;38mMEDYCYNA PRACY:\t%d\033[0m\n", limity_lekarzy[4]);
+    fflush(stdout);
 
     key_t msg_key = generuj_klucz_ftok(".", 'B');
     int msg_id = alokujKolejkeKomunikatow(msg_key, IPC_CREAT | 0600);
@@ -31,7 +63,7 @@ int main()
 
     // Godziny otwarcia i zamknięcia rejestracji (w sekundach od północy)
     int Tp = current_time;      // Aktualny czas
-    int Tk = current_time + 5; // Aktualny czas + 60 sekund (1 minuta)
+    int Tk = current_time + 5; // Aktualny czas + x sekund
 
     printGreen("[Rejestracja]: Rejestracja uruchomiona, oczekuje na pacjentów");
 
@@ -48,7 +80,7 @@ int main()
         // Sprawdź, czy aktualny czas jest poza godzinami otwarcia
         if (current_time < Tp || current_time > Tk)
         {
-            printYellow("[Rejestracja]: Rejestracja jest zamknięta. Kończenie pracy.");
+            printYellow("[Rejestracja]: Przychodnia jest zamknięta. Kończenie pracy.");
             fflush(stdout);
             break; // Wyjście z pętli, gdy czas jest poza godzinami otwarcia
         }
@@ -69,7 +101,12 @@ int main()
             continue;
         }
 
+        // Tutaj należy sprawdzić limit indywidulany lekarza (przed zarejestrowaniem pacjenta)
         printf("\033[1;32m[Rejestracja - 1 okienko]: Rejestracja pacjenta nr %d do lekarza: %d\033[0m\n", msg.id_pacjent, msg.id_lekarz);
+
+
+        /*Obsługa wysyłania pacjenta do danego lekarza*/
+
 
         // Sprawdź liczbę procesów oczekujących na rejestrację ponownie
         int liczba_procesow = policzProcesy(msg_id);
@@ -99,6 +136,15 @@ int main()
 
     printYellow("Czekam na sygnał zakończenia generowania pacjentów...\n");
 
+    klucz_pamieci = generuj_klucz_ftok(".", 'X');
+    shmID = alokujPamiecWspoldzielona(klucz_pamieci, PAM_SIZE * sizeof(int), IPC_CREAT | 0666);
+    pamiec_wspoldzielona = dolaczPamiecWspoldzielona(shmID, 0);
+    waitSemafor(semID, 4, 0);
+    int j;
+    for(int j = 1; j < 6; j++){
+        printf("Lekarz o id %d ma obecnie nastawiony licznik na: %d\n",j, pamiec_wspoldzielona[j]);
+        fflush(stdout);
+    }
     // Wypisz pacjentów, którzy byli w kolejce do rejestracji w momencie zamykania rejestracji
     //wypiszPacjentowWKolejce(msg_id, semID);
     printYellow("Rejestracja zakończyła działanie\n");

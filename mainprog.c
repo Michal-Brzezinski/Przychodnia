@@ -1,3 +1,10 @@
+
+/*
+PLIK SKŁADA SIĘ Z NIEZBĘDNYCH INICJALIZACJI ZASOBÓW, BY PÓŹNIEJ EJ ZWOLNIĆ, Z DEFINICJI FUNKCJI OBSŁUGI SYGNAŁÓW,
+GENEROWANIA PROCESÓW POTOMNYCH - LEKARZY, PACJENTÓW I REJESTRACJI 
+*/
+
+
 #include <stdio.h>
 #include <stdlib.h> 
 #include <sys/types.h> 
@@ -22,20 +29,38 @@
 #include "MyLib/sem_utils.h"
 #include "MyLib/msg_utils.h"
 #include "MyLib/dekoratory.h"
+#include "MyLib/shm_utils.h"
 
-#define S 3     // ilosc semaforow w zbiorze - w razie potrzeby zwiększyć
+#define S 5     // ilosc semaforow w zbiorze - w razie potrzeby zwiększyć
 #define BUILDING_MAX 10     // maksymalna pojemność pacjentów w budynku 
 #define MAX_GENERATE 15   // maksymalna liczba procesów pacjentów do wygenerowania
+#define PAM_SIZE 7 // Rozmiar tablicy pamieci wspoldzielonej
+// struktura pamieci wspoldzielonej
+// pamiec_wspoldzielona[0] - wspolny licznik pacjentow
+// pamiec_wspoldzielona[1-5] - limity pacjentow dla lekarzy
+// pamiec_wspoldzielona[6] - licznik procesów, które zapisały do pamięci dzielonej
 
 volatile sig_atomic_t keep_generating = 1;
 pid_t generator_pacjentow_pid = -1;
 pid_t generator_lekarzy_pid = -1;
 pid_t rejestracja_pid = -1;
 
+int shmID;  // id pamięci współdzielonej
 int semID;  // id zbioru semaforów
-int msg_id1; // id 1. kolejki komunikatów
+int msg_id; // id 1. kolejki POZ
+int msg_id1; // id 2. kolejki KARDIOLOGA
+int msg_id2; // id 3. kolejki OKULISTY
+int msg_id3; // id 4. kolejki PEDIATRY
+int msg_id4; // id 5. kolejki PEDIATRY
+int msg_id5; // id 6. kolejki LEKARZA MEDYCYNY PRACY
 key_t klucz_wejscia; // klucz do semafora panującego nad ilością pacjentów w budynku
-key_t msg_key1; // klucz do 1. kolejki komunikatów
+key_t shm_key; // klucz do pamięci współdzielonej
+key_t msg_key; // klucz do kolejki komunikatów do rejestracji
+key_t msg_key1; // klucz do kolejki do POZ
+key_t msg_key2; // klucz do kolejki do KARDIOLOGA
+key_t msg_key3; // klucz do kolejki do OKULISTY
+key_t msg_key4; // klucz do kolejki do PEDIATRY
+key_t msg_key5; // klucz do kolejki do LEKARZA MEDYCYNY PRACY
 
 
 
@@ -63,7 +88,13 @@ void handle_sigint(int sig) {
 
     // Zwolnij zasoby IPC
     zwolnijSemafor(klucz_wejscia);
+    zwolnijKolejkeKomunikatow(msg_key);
+    zwolnijPamiecWspoldzielona(shm_key);
     zwolnijKolejkeKomunikatow(msg_key1);
+    zwolnijKolejkeKomunikatow(msg_key2);
+    zwolnijKolejkeKomunikatow(msg_key3);
+    zwolnijKolejkeKomunikatow(msg_key4);
+    zwolnijKolejkeKomunikatow(msg_key5);
     system("bash czystka.sh");
 
     printRed("\n[Main]: Zakończono program po otrzymaniu SIGINT.");
@@ -76,15 +107,39 @@ int main(){
     //  --------------------  INICJALIZACJA  -----------------   
 
     int i;  // zmienna iteracyjna 
-    key_t klucz_wejscia =  generuj_klucz_ftok(".", 'A');   // do semafora panującego nad ilością pacjentów w budynku
+
+    klucz_wejscia =  generuj_klucz_ftok(".", 'A');   // do semafora panującego nad ilością pacjentów w budynku
     semID = alokujSemafor(klucz_wejscia, S, IPC_CREAT | IPC_EXCL | 0600);
 
-    key_t msg_key1 = generuj_klucz_ftok(".",'B');
-    msg_id1 = alokujKolejkeKomunikatow(msg_key1,IPC_CREAT | 0600);
+    shm_key = generuj_klucz_ftok(".",'X');
+    shmID = alokujPamiecWspoldzielona(shm_key, PAM_SIZE * sizeof(int), IPC_CREAT | IPC_EXCL | 0600);
+
+    msg_key = generuj_klucz_ftok(".",'B');
+    msg_id = alokujKolejkeKomunikatow(msg_key,IPC_CREAT | IPC_EXCL | 0600);
+
+    msg_key1 = generuj_klucz_ftok(".",1);
+    msg_id1 = alokujKolejkeKomunikatow(msg_key1,IPC_CREAT | IPC_EXCL | 0600);
+
+    msg_key2 = generuj_klucz_ftok(".",2);
+    msg_id2 = alokujKolejkeKomunikatow(msg_key2,IPC_CREAT | IPC_EXCL | 0600);
+    
+    msg_key3 = generuj_klucz_ftok(".",3);
+    msg_id3 = alokujKolejkeKomunikatow(msg_key3,IPC_CREAT | IPC_EXCL | 0600);
+    
+    msg_key4 = generuj_klucz_ftok(".",4);
+    msg_id4 = alokujKolejkeKomunikatow(msg_key4,IPC_CREAT | IPC_EXCL | 0600);
+    
+    msg_key5 = generuj_klucz_ftok(".",5);
+    msg_id5 = alokujKolejkeKomunikatow(msg_key5,IPC_CREAT | IPC_EXCL | 0600);
 
     inicjalizujSemafor(semID,0,BUILDING_MAX); // semafor zainicjalizowany na maksymalną liczbe pacjentów w budynku
     inicjalizujSemafor(semID,1,0);  //potrzebny, aby proces czekał na potwierdzenie przyjęcia
     inicjalizujSemafor(semID,2,1);  // semafor mówiący, że rejestracja jest zamknięta
+    inicjalizujSemafor(semID,3,1);  // semafor zapisu do pamieci wspoldzielonej
+    inicjalizujSemafor(semID,4,0);  // semafor do odczytu z pamieci wspoldzielonej
+    int limit_pacjentow = losuj_int(MAX_GENERATE/2)+MAX_GENERATE/2; // Losowy limit pacjentów dla wszystkich lekarzy
+    char arg2[10];    // arg2 to limit pacjentów dla wszystkich lekarzy - używany jako argument w execl
+    sprintf(arg2, "%d", limit_pacjentow);   // Konwersja liczby na ciąg znaków
 
 
     //  -------------------   OBSŁUGA SYGNAŁÓW    --------------------------
@@ -145,7 +200,7 @@ int main(){
             exit(2);
         case 0:
             print_fflush("[Main]: Uruchamianie rejestracji...");
-            execl("./rejestracja", "rejestracja", NULL);
+            execl("./rejestracja", "rejestracja", arg2, NULL);
             // usuwanie wszystkich procesów i zasobów ipc - zaimplementować
             perror("[Main]: Błąd execl dla rejestracji\n");
             exit(3);
@@ -155,6 +210,7 @@ int main(){
 
 
     /*--------------------------    LEKARZE   ---------------------------------------*/
+
         generator_lekarzy_pid = fork();
     if (generator_lekarzy_pid == -1) {
         perror("[Main]: Błąd fork dla generatora lekarzy\n");
@@ -162,11 +218,8 @@ int main(){
     } else if (generator_lekarzy_pid == 0) {
         // Proces potomny: generowanie lekarzy
         // Teoretycznie ma ten sam handler zakończenia procesów dzieci
-        int limit_pacjentow = losuj_int(MAX_GENERATE/2)+MAX_GENERATE/2; // Losowy limit pacjentów dla wszystkich lekarzy
         printf("[Main]: Maksymalna liczba pacjentów do przyjęcia to %d\n", limit_pacjentow);
         char arg1[2];   // arg1 to id lekarza
-        char arg2[10];    // arg2 to limit pacjentów dla wszystkich lekarzy
-        sprintf(arg2, "%d", limit_pacjentow);   // Konwersja liczby na ciąg znaków
 
         for (i = 1; i < 6; i++) {
             sprintf(arg1, "%d", i); // Konwersja liczby na ciąg znaków
@@ -187,6 +240,7 @@ int main(){
             // jeśli żaden proces nie jest gotowy do zakończenia - flaga WNOHANG
             //sleep(2); // Losowe opóźnienie 
         }
+        
         exit(0); // Zakończ proces potomny po wygenerowaniu pacjentów
     }
     
@@ -227,8 +281,18 @@ int main(){
         fflush(stdout);
     }
 
+    system("killall pacjent"); 
+    // Zakoncz wszystkie procesy pacjentów, które nie zdążyły się zakończyć, po zakończeniu generatora pacjentów
+    // i zakończeniu rejestracji, aby nie prosiły o nieistniejące już zasoby
     zwolnijSemafor(klucz_wejscia);
+    zwolnijKolejkeKomunikatow(msg_key);
+    zwolnijPamiecWspoldzielona(shm_key);
     zwolnijKolejkeKomunikatow(msg_key1);
+    zwolnijKolejkeKomunikatow(msg_key2);
+    zwolnijKolejkeKomunikatow(msg_key3);
+    zwolnijKolejkeKomunikatow(msg_key4);
+    zwolnijKolejkeKomunikatow(msg_key5);
+
     system("bash czystka.sh");
 
     return 0;

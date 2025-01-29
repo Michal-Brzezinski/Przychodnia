@@ -64,7 +64,7 @@ int waitSemafor(int semID, int number, int flags)
          return 0;
 
       perror("Blad semop (waitSemafor)");
-      return -1;
+      exit(1);
    }
    
    return 1;
