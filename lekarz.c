@@ -62,16 +62,6 @@ int main(int argc, char *argv[])
     // klucz generowany jest na bazie znaku reprezentujacego lekarza
     msg_id_lekarz = alokujKolejkeKomunikatow(klucz_kolejki_lekarza, IPC_CREAT | 0600);
 
-
-    //  ____________________   INICJALIZACJA LICZNIKA LEKARZA W PAMIECI WSPOLDZIELONEJ   _____________________
-    waitSemafor(semID, 3, 0);
-    printMagenta("[Lekarz]: %d inicjalizuje swoj licznik w pamieci dzielonej\n", lekarz.id_lekarz);
-    pamiec_wspoldzielona[lekarz.id_lekarz] = lekarz.licznik_pacjentow; // ustawia na 0, tak zainicjalizowano lekarza
-    ++pamiec_wspoldzielona[6];
-    if(pamiec_wspoldzielona[6]==5){
-        signalSemafor(semID, 4); // pozwol na odczytanie licznikow lekarzy
-    }
-    signalSemafor(semID, 3);
     // ________________________________________________________________________________________________________
 
     czynnosci_lekarskie(&lekarz);   // symulacja pracy lekarza
@@ -91,41 +81,63 @@ void czynnosci_lekarskie(Lekarz *lekarz){
 
     // Godziny otwarcia i zamkniecia rejestracji (w sekundach od polnocy)
     int Tp = current_time;      // Aktualny czas
-    int Tk = current_time + 5; // Aktualny czas + x sekund 
+    int Tk = current_time + 25; // Aktualny czas + x sekund 
 
     
     // Glowna petla dzialania lekarza
-    // while(1){
+    while(1){
         
-    //     // Sprawdz aktualny czas
-    //     now = time(NULL);
-    //     local = localtime(&now);
-    //     current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
-    //     // Sprawdz, czy aktualny czas jest poza godzinami otwarcia
-    //     if (current_time < Tp || current_time > Tk)
-    //     {
-    //         printYellow("[Lekarz]: Przychodnia jest zamknieta. Konczenie pracy.");
-    //         fflush(stdout);
-    //         break; // Wyjscie z petli, gdy czas jest poza godzinami otwarcia
-    //     }
-        
-    //     Wiadomosc msg;
-    //     if (msgrcv(msg_id_lekarz, &msg, sizeof(Wiadomosc) - sizeof(long), -2, 0) == -1)        {
-    //         if (errno != ENOMSG)
-    //         {
-    //             perror_red("[Lekarz]: Blad msgrcv");
-    //             exit(1);
-    //         }
-    //     }
-    //     printMagenta("[Lekarz]: Lekarz %s przyjal pacjenta %d", lekarz->nazwa, msg.id_pacjent);
-    //     sleep(3); // symulacja pracy lekarza
-    //     lekarz->licznik_pacjentow++;
-    //     if(lekarz->licznik_pacjentow >= lekarz->indywidualny_limit){
-    //         printMagenta("[Lekarz]: Lekarz %s osiagnal limit pacjentow", lekarz->nazwa);
-    //         break;
-    //     }
-        
-    // }
+        // Sprawdz aktualny czas
+        now = time(NULL);
+        local = localtime(&now);
+        current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
+        // Sprawdz, czy aktualny czas jest poza godzinami otwarcia
+        if (current_time < Tp || current_time > Tk)
+        {
+            printMagenta("[%s]: Przychodnia jest zamknieta. Lekarz o id: %d konczy prace.\n", lekarz->nazwa, lekarz->id_lekarz);
+            break; // Wyjscie z petli, gdy czas jest poza godzinami otwarcia
+        }
+        waitSemafor(semID,3,0);
+        if((lekarz->indywidualny_limit)==(lekarz->licznik_pacjentow)){
+            signalSemafor(semID,3);
+            printMagenta("[%s]: Lekarz o id %d osiagnal limit pacjentow i konczy prace\n", lekarz->nazwa, lekarz->id_lekarz);
+            break;
+        }
+        signalSemafor(semID,3);
 
+        Wiadomosc msg;
+        if (msgrcv(msg_id_lekarz, &msg, sizeof(Wiadomosc) - sizeof(long), -2, IPC_NOWAIT) == -1)        {
+         // Odbieranie komunikatow o pacjentach w kolejnosci: 0,1,2
+         //  typ 0 - odpowiada najwyzszemu priorytetowi, zostaje przyjety pierwszy (powrot z badan ambulatoryjnych)
+         //  typ 1 - odpowiada wysokiemu priorytetowi - standardowy vip
+         //  typ 2 - odpowiada niskiemu priorytetowi - zwykly pacjent
+         // W razie braku komuniaktow nie zawieszaj dzialania i pracuj w petli (idz dalej)
 
+            if (errno != ENOMSG)
+            {
+                perror_red("[Lekarz]: Blad msgrcv\n");
+                exit(1);
+            }
+        }
+        else{
+            // Gdy zostanie odczytany komunikat wykonaj czynnosci:
+            waitSemafor(semID,3,0);
+            printMagenta("[%s]: Lekarz o id %d przyjal pacjenta %d o priorytecie: %d\n",lekarz->nazwa, lekarz->id_lekarz, msg.id_pacjent, msg.vip);
+            lekarz->licznik_pacjentow++;
+            pamiec_wspoldzielona[lekarz->id_lekarz] = lekarz->licznik_pacjentow;
+            ++pamiec_wspoldzielona[0];  // zwieksza wspolny licznik
+            signalSemafor(semID,3);
+            if(lekarz->licznik_pacjentow >= lekarz->indywidualny_limit){
+                printMagenta("[%s]: Lekarz o id %d osiagnal limit pacjentow i konczy prace\n", lekarz->nazwa, lekarz->id_lekarz);
+                sleep(2); // symulacja pracy lekarza
+                break;
+            }
+            sleep(2); // symulacja pracy lekarza
+            // Informuj pacjenta, ze moze wyjsc z budynku
+            signalSemafor(semID, 1);
+        }
+
+    }
+    
+    return;
 }

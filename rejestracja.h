@@ -30,6 +30,15 @@ typedef struct {
 } Wiadomosc;
 //  struktura wiadomosci w rejestracji
 
+// Definicja typu wyliczeniowego dla lekarzy
+enum lekarze{ 
+    POZ = 1, 
+    KARDIOLOG, 
+    OKULISTA, 
+    PEDIATRA, 
+    MEDYCYNA_PRACY
+};
+
 // Funkcja pomocnicza do obliczania liczby procesow w kolejce
 int policzProcesy(int msg_id) {
     /* Zlicz liczbe komunikatow w kolejce (w prostym przypadku nieopoznionym) */
@@ -38,7 +47,7 @@ int policzProcesy(int msg_id) {
     struct msqid_ds buf;
     if (msgctl(msg_id, IPC_STAT, &buf) == -1) {
         perror("\033[1;31m[policzProcesy]: msgctl IPC_STAT\033[0m\n");
-        exit(1);
+        return -1;
     }
     liczba_procesow = buf.msg_qnum;
     return liczba_procesow;

@@ -167,6 +167,18 @@ void perror_red(const char *s) {
     fflush(stdout);
 }
 
+void oczekujNaProces(pid_t pid, const char *nazwa_procesu) {
+    
+    int status;
+    waitpid(pid, &status, 0);
+
+    if (WIFEXITED(status))
+        print("[Main]: Proces %s zakonczony z kodem %d.\n", nazwa_procesu, WEXITSTATUS(status));
+    else
+        print("[Main]: Proces %s zakonczony niepowodzeniem.\n", nazwa_procesu);
+
+}
+
 void wyczyscProcesyPacjentow()
 {
 system("killall pacjent");

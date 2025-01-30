@@ -80,7 +80,7 @@ void signalSemafor(int semID, int number)
    if (semop(semID, operacje, 1) == -1 )
       
       if(errno != EINTR)
-      perror("Blad semop (postSemafor): ");
+      perror("Blad semop (postSemafor)");
 
    return;
 }

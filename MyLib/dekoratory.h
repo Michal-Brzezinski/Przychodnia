@@ -11,6 +11,7 @@
 #include <math.h>
 #include <stdarg.h>
 #include <string.h>
+#include <sys/wait.h>
 
 const  static char *czerwony = "\033[1;31m";    // Czerwony kolor
 const static char *zielony = "\033[1;32m";  // Zielony kolor
@@ -33,5 +34,6 @@ void printCyan(const char *format, ...);
 void printMagenta(const char *format, ...);
 void perror_red(const char *s);
 int procentNaNaturalna(int n, int x);
+void oczekujNaProces(pid_t pid, const char *nazwa_procesu);
 void wyczyscProcesyPacjentow();
 void usunNiepotrzebnePliki();

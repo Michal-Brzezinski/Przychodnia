@@ -33,7 +33,7 @@ GENEROWANIA PROCESÓW POTOMNYCH - LEKARZY, PACJENTÓW I REJESTRACJI
 
 #define S 5     // ilosc semaforow w zbiorze - w razie potrzeby zwiekszyc
 #define BUILDING_MAX 10     // maksymalna pojemnosc pacjentow w budynku 
-#define MAX_GENERATE 15   // maksymalna liczba procesow pacjentow do wygenerowania
+#define MAX_GENERATE 300   // maksymalna liczba procesow pacjentow do wygenerowania
 #define PAM_SIZE 7 // Rozmiar tablicy pamieci wspoldzielonej
 // struktura pamieci wspoldzielonej
 // pamiec_wspoldzielona[0] - wspolny licznik pacjentow
@@ -46,6 +46,7 @@ pid_t generator_lekarzy_pid = -1;
 pid_t rejestracja_pid = -1;
 
 int shmID;  // id pamieci wspoldzielonej
+int * pamiec_wspoldzielona;
 int semID;  // id zbioru semaforow
 int msg_id_rej; // id kolejki do rejestracji
 int msg_id_POZ; // id 1. kolejki POZ
@@ -113,6 +114,8 @@ int main(){
 
     shm_key = generuj_klucz_ftok(".",'X');
     shmID = alokujPamiecWspoldzielona(shm_key, PAM_SIZE * sizeof(int), IPC_CREAT | IPC_EXCL | 0600);
+    pamiec_wspoldzielona = dolaczPamiecWspoldzielona(shmID,0);
+    memset(pamiec_wspoldzielona, 0, PAM_SIZE * sizeof(int)); // Inicjalizacja wszystkich elementów pamięci na 0
 
     msg_key_rej = generuj_klucz_ftok(".",'B');
     msg_id_rej = alokujKolejkeKomunikatow(msg_key_rej,IPC_CREAT | IPC_EXCL | 0600);
@@ -135,8 +138,8 @@ int main(){
     inicjalizujSemafor(semID,0,BUILDING_MAX); // semafor zainicjalizowany na maksymalna liczbe pacjentow w budynku
     inicjalizujSemafor(semID,1,0);  //potrzebny, aby proces pacjenta czekal na potwierdzenie przyjecia
     inicjalizujSemafor(semID,2,1);  // semafor mowiacy, ze rejestracja jest zamknieta
-    inicjalizujSemafor(semID,3,1);  // semafor zapisu do pamieci wspoldzielonej
-    inicjalizujSemafor(semID,4,0);  // semafor do odczytu z pamieci wspoldzielonej
+    inicjalizujSemafor(semID,3,1);  // semafor dostepu do pamieci wspoldzielonej
+    inicjalizujSemafor(semID,4,0);  // semafor do pracy z plikiem
     int limit_pacjentow = losuj_int(MAX_GENERATE/2)+MAX_GENERATE/2; // Losowy limit pacjentow dla wszystkich lekarzy
     char arg2[10];    // arg2 to limit pacjentow dla wszystkich lekarzy - uzywany jako argument w execl
     sprintf(arg2, "%d", limit_pacjentow);   // Konwersja liczby na ciag znakow
@@ -160,38 +163,7 @@ int main(){
     }
 
 
-    //---------------------------   PACJENCI     -------------------------------
-
-    // Utworz proces potomny do generowania pacjentow
-    // Aby proces rodzic mogl wykonywac inne zadania
-
-    generator_pacjentow_pid = fork();
-    if (generator_pacjentow_pid == -1) {
-        perror_red("[Main]: Blad fork dla generatora pacjentow\n");
-        exit(2);
-    } else if (generator_pacjentow_pid == 0) {
-        // Proces potomny: generowanie pacjentow
-        //Teoretycznie ma ten sam handler zakonczenia procesow dzieci
-        for (i = 0; i < MAX_GENERATE && keep_generating; i++) {
-            pid_t pid = fork();
-            if (pid == -1) {
-                perror_red("[Main]: Blad fork (generator pacjentow) - probuj generowac pacjentow dalej\n");
-                break;
-            } else if (pid == 0) {
-                execl("./pacjent", "pacjent", NULL);
-                perror_red("[Main]: Blad execl dla pacjenta\n");
-                exit(2);
-            } 
-            // Proces rodzic: sprawdz zakonczenie procesu potomnego bez blokowania
-            while (waitpid(-1, NULL, WNOHANG) > 0);
-            //prawdza, czy jakikolwiek proces potomny zakonczyl sie, ale nie blokuje, 
-            //jesli zaden proces nie jest gotowy do zakonczenia - flaga WNOHANG
-            sleep(2); // Losowe opoznienie 0-6 sekund 
-        }
-        exit(0); // Zakoncz proces potomny po wygenerowaniu pacjentow
-    }
-
-    //-----------------------   REJESTRACJA  -------------------------------
+ //-----------------------   REJESTRACJA  -------------------------------
 
     switch (fork()) {
         case -1:
@@ -238,9 +210,39 @@ int main(){
             while (waitpid(-1, NULL, WNOHANG) > 0);
             // sprawdza, czy jakikolwiek proces potomny zakonczyl sie, ale nie blokuje, 
             // jesli zaden proces nie jest gotowy do zakonczenia - flaga WNOHANG
-            sleep(2); // Losowe opoznienie 
         }
         
+        exit(0); // Zakoncz proces potomny po wygenerowaniu pacjentow
+    }
+
+    //---------------------------   PACJENCI     -------------------------------
+
+    // Utworz proces potomny do generowania pacjentow
+    // Aby proces rodzic mogl wykonywac inne zadania
+
+    generator_pacjentow_pid = fork();
+    if (generator_pacjentow_pid == -1) {
+        perror_red("[Main]: Blad fork dla generatora pacjentow\n");
+        exit(2);
+    } else if (generator_pacjentow_pid == 0) {
+        // Proces potomny: generowanie pacjentow
+        //Teoretycznie ma ten sam handler zakonczenia procesow dzieci
+        for (i = 0; i < MAX_GENERATE && keep_generating; i++) {
+            pid_t pid = fork();
+            if (pid == -1) {
+                perror_red("[Main]: Blad fork (generator pacjentow) - probuj generowac pacjentow dalej\n");
+                break;
+            } else if (pid == 0) {
+                execl("./pacjent", "pacjent", NULL);
+                perror_red("[Main]: Blad execl dla pacjenta\n");
+                exit(2);
+            } 
+            // Proces rodzic: sprawdz zakonczenie procesu potomnego bez blokowania
+            while (waitpid(-1, NULL, WNOHANG) > 0);
+            //prawdza, czy jakikolwiek proces potomny zakonczyl sie, ale nie blokuje, 
+            //jesli zaden proces nie jest gotowy do zakonczenia - flaga WNOHANG
+            sleep(1); // Opoznienien w generowaniu kolejnych pacjentow
+        }
         exit(0); // Zakoncz proces potomny po wygenerowaniu pacjentow
     }
     
@@ -276,7 +278,6 @@ int main(){
     
 
     // KONCZENIE PRACY PROGRAMU: KONCZENIE ZBEDNYCH PROCESOW I ZWALNIANIE ZASOBOW 
-
     wyczyscProcesyPacjentow(); 
     // Zakoncz wszystkie procesy pacjentow, ktore nie zdazyly sie zakonczyc, po zakonczeniu generatora pacjentow
     // i zakonczeniu rejestracji, aby nie prosily o nieistniejace juz zasoby

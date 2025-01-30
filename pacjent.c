@@ -66,12 +66,12 @@ int main(){
     else
     printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku pod opieka\n",msg.id_pacjent, msg.wiek, msg.vip);
 
-    sleep(1); // opoznienie 5 sekund w budynku
+    sleep(1); // opoznienie sekundy w budynku
 
     //  ________________________________    KOMUNIKACJA Z REJESTRACJĄ   __________________________________________
 
 
-        // Pacjent oczekuje na rejestracje
+    // Pacjent oczekuje na rejestracje
     if(pacjent.wiek >= 18)
     printBlue("[Pacjent]: Pacjent %d czeka na rejestracje w kolejce do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
     else
