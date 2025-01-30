@@ -9,7 +9,12 @@
         "sem_utils.h": "c",
         "unistd.h": "c",
         "msg.h": "c",
-        "errno.h": "c"
+        "errno.h": "c",
+        "any": "c",
+        "memory": "c",
+        "random": "c",
+        "future": "c",
+        "optional": "c"
     },
     "makefile.configureOnOpen": true,
     "C_Cpp.errorSquiggles": "enabled"

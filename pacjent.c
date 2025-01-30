@@ -6,27 +6,27 @@
 #include "pacjent.h"
 
 
-sem_t opiekun_semafor; // Semafor do synchronizacji wątków
+sem_t opiekun_semafor; // Semafor do synchronizacji watkow
 pthread_t id_dziecko;
-volatile int zakoncz_program = 0; // Flaga do zakończenia programu
+volatile int zakoncz_program = 0; // Flaga do zakonczenia programu
 
 void *dziecko(void* _wat);
 void obsluga_SIGINT(int sig);
 
 int main(){
 
-    // Obsługa sygnału SIGINT
+    // Obsluga sygnalu SIGINT
     struct sigaction sa;
     sa.sa_handler = obsluga_SIGINT;
     sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
     sigemptyset(&sa.sa_mask);
     sigaction(SIGINT, &sa, NULL);
 
-    // Inicjalizacja semafora wątków
-    // Mogę tutaj inicjalizować semafor, bo wątki są w jednym procesie
+    // Inicjalizacja semafora watkow
+    // Moge tutaj inicjalizowac semafor, bo watki sa w jednym procesie
     sem_init(&opiekun_semafor, 0, 0);
 
-    // ----------- inicjalizacja wartości struktury pacjenta
+    // ----------- inicjalizacja wartosci struktury pacjenta
     Pacjent pacjent;
     inicjalizujPacjenta(&pacjent);
 
@@ -44,74 +44,65 @@ int main(){
 
         int utworz_dziecko=pthread_create(&id_dziecko,NULL,dziecko,(void*)&pacjent.id_pacjent);
         if (utworz_dziecko==-1) {
-            perror("\033[1;31m[Pacjent]: Błąd pthread_create - tworzenie dziecka\033[0m\n");
+            perror_red("[Pacjent]: Blad pthread_create - tworzenie dziecka\n");
             exit(1);
         }
     }
     
     // _______________________________  DOSTANIE SIĘ DO BUDYNKU     _______________________________________
     
-    if(pacjent.wiek >= 18){
-    printf("\033[1;34m[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d próbuje wejść do budynku\033[0m\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
-    fflush(stdout);}
-    else{
-    printf("\033[1;34m[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d próbuje wejść do budynku z opiekunem\033[0m\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
-    fflush(stdout);
-    }
+    if(pacjent.wiek >= 18)
+    printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d probuje wejsc do budynku\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
+    else
+    printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d probuje wejsc do budynku z opiekunem\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
 
-    while (valueSemafor(semID, 2) == 0);   // czeka na otwarcie rejestracji (zapewnia, że nikogo nie wpuszczamy do budynku przed otwarciem rejestracji)    
+
+    while (valueSemafor(semID, 2) == 0);   // czeka na otwarcie rejestracji (zapewnia, ze nikogo nie wpuszczamy do budynku przed otwarciem rejestracji)    
 
     waitSemafor(semID, 0, 0);   /* SPRAWDZA CZY MOŻE WEJŚĆ DO BUDYNKU BAZUJĄC NA SEMAFORZE*/
     
-    if(pacjent.wiek >= 18){
-    printf("\033[1;34m[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedł do budynku\033[0m\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
-    fflush(stdout);
-    }
-    else{
-    printf("\033[1;34m[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedł do budynku pod opieką\033[0m\n",msg.id_pacjent, msg.wiek, msg.vip);
-    fflush(stdout);}
+    if(pacjent.wiek >= 18)
+    printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
+    else
+    printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku pod opieka\n",msg.id_pacjent, msg.wiek, msg.vip);
 
-    //sleep(1); // opóźnienie 5 sekund w budynku
+    sleep(1); // opoznienie 5 sekund w budynku
 
     //  ________________________________    KOMUNIKACJA Z REJESTRACJĄ   __________________________________________
 
 
-        // Pacjent oczekuje na rejestrację
-    if(pacjent.wiek >= 18){
-    printf("\033[1;34m[Pacjent]: Pacjent %d czeka na rejestrację w kolejce do lekarza: %d.\033[0m\n", msg.id_pacjent, msg.id_lekarz);
-    fflush(stdout);
-    }
-    else{
-    printf("\033[1;34m[Pacjent]: Pacjent %d czeka z opiekunem na rejestrację w kolejce do lekarza: %d.\033[0m\n", msg.id_pacjent, msg.id_lekarz);
-    fflush(stdout);}
+        // Pacjent oczekuje na rejestracje
+    if(pacjent.wiek >= 18)
+    printBlue("[Pacjent]: Pacjent %d czeka na rejestracje w kolejce do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
+    else
+    printBlue("\033[1;34m[Pacjent]: Pacjent %d czeka z opiekunem na rejestracje w kolejce do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
 
-        // Wyślij wiadomość do rejestracji
+
+        // Wyslij wiadomosc do rejestracji
     if (msgsnd(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-        perror("\033[1;31m[Pacjent]: Błąd msgsnd - pacjent\033[0m\n");
+        perror_red("[Pacjent]: Blad msgsnd - pacjent\n");
         exit(1);
     }
 
-    waitSemafor(semID, 1, 0);   // czeka aż przyjdzie komunikat
+    waitSemafor(semID, 1, 0);   // czeka az przyjdzie komunikat
 
 
-    if(valueSemafor(semID, 2)==1)   signalSemafor(semID, 0);    // zwolnienie semafora wejścia do budynku
-    if(pacjent.wiek >= 18){
-    printf("\033[1;34m[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedł z budynku\033[0m\n",msg.id_pacjent, msg.wiek, msg.vip);
-    fflush(stdout);}
-    else{
-    printf("\033[1;34m[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedł z budynku wraz z opiekunem\033[0m\n",msg.id_pacjent, msg.wiek, msg.vip);
-    fflush(stdout);
-    }
+    if(valueSemafor(semID, 2)==1)   signalSemafor(semID, 0);    // zwolnienie semafora wejscia do budynku
+    if(pacjent.wiek >= 18)
+    printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedl z budynku\n",msg.id_pacjent, msg.wiek, msg.vip);
+    else
+    printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedl z budynku wraz z opiekunem\n",msg.id_pacjent, msg.wiek, msg.vip);
+
 
     if (pacjent.wiek < 18) {
-        // Sygnalizuj dziecku zakończenie
+        // Sygnalizuj dziecku zakonczenie
         sem_post(&opiekun_semafor);
         zakoncz_program = 1;
-        // Oczekiwanie na zakończenie pracy wątku dziecka
+        // Oczekiwanie na zakonczenie pracy watku dziecka
         
         int przylacz_dziecko=pthread_join(id_dziecko,NULL);
         if (przylacz_dziecko==-1) {
-            perror("\033[1;31m[Pacjent]: Błąd pthread_join - przylaczenie dziecka\033[0m\n");
+            perror_red("[Pacjent]: Blad pthread_join - przylaczenie dziecka\n");
             exit(1);
         }
     }
@@ -124,13 +115,13 @@ int main(){
 
 void obsluga_SIGINT(int sig) {
 
-    // Ustawienie flagi zakończenia
+    // Ustawienie flagi zakonczenia
     zakoncz_program = 1;
 
-    // Odblokuj dziecko, jeśli czeka na semaforze
+    // Odblokuj dziecko, jesli czeka na semaforze
     sem_post(&opiekun_semafor);
 
-    // Anulowanie i oczekiwanie na zakończenie wątku dziecka
+    // Anulowanie i oczekiwanie na zakonczenie watku dziecka
     pthread_cancel(id_dziecko);
     pthread_join(id_dziecko, NULL);
 
@@ -144,21 +135,21 @@ void obsluga_SIGINT(int sig) {
 void *dziecko(void* _wat){
 
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-    // pozwala na anulowanie wątku w dowolnym momencie (asynchronicznie)
+    // pozwala na anulowanie watku w dowolnym momencie (asynchronicznie)
 
     int *pid = (int *)_wat;
-    printf("\033[1;36m[Dziecko]: Wątek dziecka nr %d się bawi.\033[0m\n", *pid);
+    printCyan("[Dziecko]: Watek dziecka nr %d sie bawi.\n", *pid);
     
     while (!zakoncz_program) {
-        // Czekaj na sygnał od wątku głównego
+        // Czekaj na sygnal od watku glownego
         sem_wait(&opiekun_semafor);
 
         if (zakoncz_program) {
-            break; // Wyjście z pętli, jeśli program ma się zakończyć
+            break; // Wyjscie z petli, jesli program ma sie zakonczyc
         }   
     }
 
-    printf("\033[1;36m[Dziecko]: Wątek dziecka nr %d przestał się bawić.\033[0m\n", *pid);
+    printCyan("[Dziecko]: Watek dziecka nr %d przestal sie bawic.\n", *pid);
     return NULL;
 
 }

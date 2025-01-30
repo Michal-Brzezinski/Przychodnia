@@ -12,38 +12,38 @@
 #include <string.h>
 #include <sys/msg.h>
 
-#define MAX_PATIENTS 100 // Maksymalna liczba pacjentów w przychodni (N)- dać do funkcji przychodni
-#define BUILDING_CAPACITY 10 // Maksymalna liczba pacjentów w przychodni
-#define HOW_MUCH_PATIENTS 3 // Ilu pacjentów wygenerować
+#define MAX_PATIENTS 100 // Maksymalna liczba pacjentow w przychodni (N)- dac do funkcji przychodni
+#define BUILDING_CAPACITY 10 // Maksymalna liczba pacjentow w przychodni
+#define HOW_MUCH_PATIENTS 3 // Ilu pacjentow wygenerowac
 
-extern time_t Tp, Tk; // globalne zmienne godzin pracy przychodni (póki co czas w którym generowani są pacjenci)  
+extern time_t Tp, Tk; // globalne zmienne godzin pracy przychodni (poki co czas w ktorym generowani sa pacjenci)  
 
 // Klucz i identyfikator semafora
 extern key_t building_key;
 extern int building_sem_id;
 
-// Klucz i identyfikator kolejki komunikatów
+// Klucz i identyfikator kolejki komunikatow
 extern key_t queue_key;
 extern int queue_id;
 
-// Struktura wiadomości w kolejce 
+// Struktura wiadomosci w kolejce 
 typedef struct {
-    long type;    // Typ wiadomości (priorytet: 1 dla VIP, 2 dla zwykłych pacjentów)
+    long type;    // Typ wiadomosci (priorytet: 1 dla VIP, 2 dla zwyklych pacjentow)
     int id;       // ID pacjenta
     int age;      // Wiek pacjenta
-    int is_vip;   // 1 jeśli VIP, 0 jeśli nie
+    int is_vip;   // 1 jesli VIP, 0 jesli nie
 } Message;
 
-// Struktura reprezentująca pacjenta
+// Struktura reprezentujaca pacjenta
 typedef struct {
     int id;
-    int is_vip; // 1 jeśli VIP, 0 jeśli nie
+    int is_vip; // 1 jesli VIP, 0 jesli nie
     int age;    // Wiek pacjenta
 } Patient;
 
-// Wiadomość potwierdzająca dla pacjenta, czy został przyjęty
+// Wiadomosc potwierdzajaca dla pacjenta, czy zostal przyjety
 typedef struct {
-    long type;  // ID pacjenta (odpowiadający `patient.id`)
+    long type;  // ID pacjenta (odpowiadajacy `patient.id`)
     int id;     // Identyfikator pacjenta
 } Confirmation;
 

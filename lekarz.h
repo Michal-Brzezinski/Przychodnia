@@ -13,8 +13,8 @@
 // struktura pamieci wspoldzielonej
 // pamiec_wspoldzielona[0] - wspolny licznik pacjentow
 // pamiec_wspoldzielona[1-5] - limity pacjentow dla lekarzy
-// pamiec_wspoldzielona[6] - licznik procesów, które zapisały do pamięci dzielonej
-#define S 5 // Ilość semaforów w zbiorze
+// pamiec_wspoldzielona[6] - licznik procesow, ktore zapisaly do pamieci dzielonej
+#define S 5 // Ilosc semaforow w zbiorze
 
 // Definicja typu wyliczeniowego dla lekarzy
 enum lekarze{ 
@@ -35,16 +35,16 @@ typedef struct{
 }Lekarz;
 
 typedef struct {
-    long mtype;       // Typ wiadomości
+    long mtype;       // Typ wiadomosci
     int id_pacjent;   // Numer pacjenta
     int vip;          // Status VIP
     int wiek;         // Wiek pacjenta
     int id_lekarz;    // Numer preferowanego lekarza  
 } Wiadomosc;
-//  struktura wiadomości w rejestracji
+//  struktura wiadomosci w rejestracji
 
 void inicjalizuj_lekarza(Lekarz* lekarz, int id_lekarz, int limit_pacjentow){
-    /*Funkcja inicjalizuje strukturę lekarza*/
+    /*Funkcja inicjalizuje strukture lekarza*/
 
     lekarz->id_lekarz = id_lekarz;
     lekarz->licznik_pacjentow = 0;

@@ -2,16 +2,16 @@
 
 int msg_id;
 
-volatile int running = 1; // Flaga do sygnalizowania zakończenia
+volatile int running = 1; // Flaga do sygnalizowania zakonczenia
 
 // Zmienna globalna do przechowywania pid procesu okienka nr 2
 pid_t pid_okienka2 = -1;
 
-int *pamiec_wspoldzielona;  // Wskaźnik do pamięci współdzielonej
+int *pamiec_wspoldzielona;  // Wskaznik do pamieci wspoldzielonej
 int shmID;
 key_t klucz_pamieci;
 
-int limity_lekarzy[5] = {0}; // Tablica przechowująca limity pacjentów dla lekarzy
+int limity_lekarzy[5] = {0}; // Tablica przechowujaca limity pacjentow dla lekarzy
 
 void uruchomOkienkoNr2(int msg_id, int semID);
 
@@ -22,34 +22,27 @@ int main(int argc, char *argv[])
 
     if (argc != 2)
     {
-        perror("\033[1;31m[Rejestracja]: Nieprawidłowa liczba argumentów\033[0m\n");
+        perror_red("[Rejestracja]: Nieprawidlowa liczba argumentow");
         exit(1);
     }
 
-    printGreen("[Rejestracja]: Uruchomiono rejestrację");
+    printGreen("[Rejestracja]: Uruchomiono rejestracje\n");
 
     int limit_pacjentow = atoi(argv[1]);
-    limity_lekarzy[0] = procentNaNaturalna(limit_pacjentow, 60); // Limit pacjentów dla lekarza POZ
+    limity_lekarzy[0] = procentNaNaturalna(limit_pacjentow, 60); // Limit pacjentow dla lekarza POZ
     int procent10 = procentNaNaturalna(limit_pacjentow, 10);
     for (int i = 1; i < 5; i++)
     {
         limity_lekarzy[i] = procent10;
     }
 
-    print_fflush("Odczytane limity lekarzy to:");
-    fflush(stdout);
-    printf("\033[1;38mWSZYSCY: \t%d\033[0m\n", limit_pacjentow);
-    fflush(stdout);
-    printf("\033[1;38mPOZ:\t%d\033[0m\n",limity_lekarzy[0]);
-    fflush(stdout);
-    printf("\033[1;38mKARDIOLOG:\t%d\033[0m\n",limity_lekarzy[1]);
-    fflush(stdout);
-    printf("\033[1;38mOKULISTA:\t%d\033[0m\n",limity_lekarzy[2]);
-    fflush(stdout);
-    printf("\033[1;38mPEDIATRA:\t%d\033[0m\n",limity_lekarzy[3]);
-    fflush(stdout);
-    printf("\033[1;38mMEDYCYNA PRACY:\t%d\033[0m\n", limity_lekarzy[4]);
-    fflush(stdout);
+    print("Odczytane limity lekarzy to:\n");
+    print("WSZYSCY: \t%d\n", limit_pacjentow);
+    print("POZ:\t%d\n",limity_lekarzy[0]);
+    print("KARDIOLOG:\t%d\n",limity_lekarzy[1]);
+    print("OKULISTA:\t%d\n",limity_lekarzy[2]);
+    print("PEDIATRA:\t%d\n",limity_lekarzy[3]);
+    print("MEDYCYNA PRACY:\t%d\n", limity_lekarzy[4]);
 
     key_t msg_key = generuj_klucz_ftok(".", 'B');
     int msg_id = alokujKolejkeKomunikatow(msg_key, IPC_CREAT | 0600);
@@ -61,54 +54,53 @@ int main(int argc, char *argv[])
     struct tm *local = localtime(&now);
     int current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
 
-    // Godziny otwarcia i zamknięcia rejestracji (w sekundach od północy)
+    // Godziny otwarcia i zamkniecia rejestracji (w sekundach od polnocy)
     int Tp = current_time;      // Aktualny czas
     int Tk = current_time + 5; // Aktualny czas + x sekund
 
-    printGreen("[Rejestracja]: Rejestracja uruchomiona, oczekuje na pacjentów");
+    printGreen("[Rejestracja]: Rejestracja uruchomiona, oczekuje na pacjentow\n");
 
     while (1)
     {
 
-        // Sprawdź aktualny czas
+        // Sprawdz aktualny czas
         now = time(NULL);
         local = localtime(&now);
         current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
 
         //printf("\033[35mCzas: %02d:%02d:%02d\033[0m\n", local->tm_hour, local->tm_min, local->tm_sec);
 
-        // Sprawdź, czy aktualny czas jest poza godzinami otwarcia
+        // Sprawdz, czy aktualny czas jest poza godzinami otwarcia
         if (current_time < Tp || current_time > Tk)
         {
-            printYellow("[Rejestracja]: Przychodnia jest zamknięta. Kończenie pracy.");
-            fflush(stdout);
-            break; // Wyjście z pętli, gdy czas jest poza godzinami otwarcia
+            printYellow("[Rejestracja]: Przychodnia jest zamknieta. Konczenie pracy.\n");
+            break; // Wyjscie z petli, gdy czas jest poza godzinami otwarcia
         }
 
         // Czekaj na komunikat rejestracji
         Wiadomosc msg;
         if (msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT) == -1)
         {
-            // Sprawdzamy, czy nie było wiadomości, ale nie blokujemy procesu dzięki IPC_NOWAIT
+            // Sprawdzamy, czy nie bylo wiadomosci, ale nie blokujemy procesu dzieki IPC_NOWAIT
             if (errno != ENOMSG)
             {
-                perror("\033[1;31m[Rejestracja]: Błąd msgrcv\033[0m\n");
+                perror_red("[Rejestracja]: Blad msgrcv\n");
                 exit(1);
             }
 
-            //printRed("[Rejestracja]: Brak pacjentów w kolejce\n");
-            //sleep(4); // Czekaj 4 sekundy i sprawdź ponownie
+            //printRed("[Rejestracja]: Brak pacjentow w kolejce\n");
+            sleep(4); // Czekaj 4 sekundy i sprawdz ponownie
             continue;
         }
 
-        // Tutaj należy sprawdzić limit indywidulany lekarza (przed zarejestrowaniem pacjenta)
-        printf("\033[1;32m[Rejestracja - 1 okienko]: Rejestracja pacjenta nr %d do lekarza: %d\033[0m\n", msg.id_pacjent, msg.id_lekarz);
+        // Tutaj nalezy sprawdzic limit indywidulany lekarza (przed zarejestrowaniem pacjenta)
+        printGreen("[Rejestracja - 1 okienko]: Rejestracja pacjenta nr %d do lekarza: %d\n", msg.id_pacjent, msg.id_lekarz);
 
 
-        /*Obsługa wysyłania pacjenta do danego lekarza*/
+        /*Obsluga wysylania pacjenta do danego lekarza*/
 
 
-        // Sprawdź liczbę procesów oczekujących na rejestrację ponownie
+        // Sprawdz liczbe procesow oczekujacych na rejestracje ponownie
         int liczba_procesow = policzProcesy(msg_id);
         if (liczba_procesow > BUILDING_MAX / 2)
         {
@@ -117,24 +109,24 @@ int main(int argc, char *argv[])
         }
         else if (liczba_procesow < BUILDING_MAX / 3)
         {
-            // Jeśli liczba procesów spadła poniżej N/3, zatrzymaj okienko nr 2
+            // Jesli liczba procesow spadla ponizej N/3, zatrzymaj okienko nr 2
             zatrzymajOkienkoNr2();
         }
 
-        // Informuj pacjenta, że może wyjść z budynku
+        // Informuj pacjenta, ze moze wyjsc z budynku
         signalSemafor(semID, 1);
 
-        // Proces rejestracji kontynuuje swoją pracę
-        //sleep(4);
+        // Proces rejestracji kontynuuje swoja prace
+        sleep(4);
     }
-    zatrzymajOkienkoNr2(); // Zatrzymaj okienko nr 2 przed zakończeniem pracy
+    zatrzymajOkienkoNr2(); // Zatrzymaj okienko nr 2 przed zakonczeniem pracy
     //
-    printRed("Zablokowano wejście nowych pacjentów do budynku\n");
-    inicjalizujSemafor(semID, 0, 0); // Zablokuj semafor wejścia do budynku
-    waitSemafor(semID, 2, 0);        // Oznajmij zakończenie rejestracji
+    printRed("Zablokowano wejscie nowych pacjentow do budynku\n");
+    inicjalizujSemafor(semID, 0, 0); // Zablokuj semafor wejscia do budynku
+    waitSemafor(semID, 2, 0);        // Oznajmij zakonczenie rejestracji
     wypiszPacjentowWKolejce(msg_id, semID);
 
-    printYellow("Czekam na sygnał zakończenia generowania pacjentów...\n");
+    printYellow("Czekam na sygnal zakonczenia generowania pacjentow...\n");
 
     klucz_pamieci = generuj_klucz_ftok(".", 'X');
     shmID = alokujPamiecWspoldzielona(klucz_pamieci, PAM_SIZE * sizeof(int), IPC_CREAT | 0666);
@@ -142,12 +134,11 @@ int main(int argc, char *argv[])
     waitSemafor(semID, 4, 0);
     int j;
     for(int j = 1; j < 6; j++){
-        printf("Lekarz o id %d ma obecnie nastawiony licznik na: %d\n",j, pamiec_wspoldzielona[j]);
-        fflush(stdout);
+        print("Lekarz o id %d ma obecnie nastawiony licznik na: %d\n",j, pamiec_wspoldzielona[j]);
     }
-    // Wypisz pacjentów, którzy byli w kolejce do rejestracji w momencie zamykania rejestracji
+    // Wypisz pacjentow, ktorzy byli w kolejce do rejestracji w momencie zamykania rejestracji
     //wypiszPacjentowWKolejce(msg_id, semID);
-    printYellow("Rejestracja zakończyła działanie\n");
+    printYellow("Rejestracja zakonczyla dzialanie\n");
     
     return 0;
 }
@@ -159,33 +150,33 @@ void uruchomOkienkoNr2(int msg_id, int semID)
     if (pid_okienka2 == 0)
     {
         // Dziecko: Okienko nr 2
-        printGreen("[Rejestracja - 2 okienko]: Otworzenie okienka nr 2...");
+        printGreen("[Rejestracja - 2 okienko]: Otworzenie okienka nr 2...\n");
         while (1)
         {
             // Czekaj na komunikaty
             Wiadomosc msg;
             if (msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, 0) == -1)
             {
-                perror("\033[1;31m[Rejestracja]: Błąd msgrcv\033[0m");
+                perror_red("[Rejestracja]: Blad msgrcv (okienko nr 2)\n");
 
                 exit(1);
             }
-            printf("\033[1;32m[Rejestracja - 2 okienko]: Rejestracja pacjenta nr %d do lekarza: %d\033[0m\n", msg.id_pacjent, msg.id_lekarz);
-            //sleep(3); // symulacja procesu rejestracji
+            printGreen("[Rejestracja - 2 okienko]: Rejestracja pacjenta nr %d do lekarza: %d\n", msg.id_pacjent, msg.id_lekarz);
+            sleep(3); // symulacja procesu rejestracji
         }
     }
     else if (pid_okienka2 == -1)
     {
-        perror("\033[1;31m[Rejestracja]: Błąd fork (okienko nr 2)\033[0m\n");
+        perror_red("[Rejestracja]: Blad fork (okienko nr 2)\n");
         exit(1);
     }
 }
 void zatrzymajOkienkoNr2()
 {
-    // Jeśli proces okienka nr 2 istnieje, wyślij do niego sygnał zakończenia
+    // Jesli proces okienka nr 2 istnieje, wyslij do niego sygnal zakonczenia
     if (pid_okienka2 != -1)
     {
         printYellow("[Rejestracja]: Zatrzymywanie okienka nr 2...\n");
-        kill(pid_okienka2, SIGTERM); // Wysłać sygnał SIGTERM do procesu okienka nr 2 (zakończenie)
+        kill(pid_okienka2, SIGTERM); // Wyslac sygnal SIGTERM do procesu okienka nr 2 (zakonczenie)
     }
 }

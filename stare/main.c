@@ -6,14 +6,14 @@ int main(int argc, char **argv) {
     // Inicjalizacja generatora liczb pseudolosowych
     srand(time(NULL));
 
-    //Funkcja signal() rejestruje funkcję signal_handler 
-    //jako obsługującą sygnał SIGINT, który jest wysyłany, gdy użytkownik naciśnie Ctrl+C.
+    //Funkcja signal() rejestruje funkcje signal_handler 
+    //jako obslugujaca sygnal SIGINT, ktory jest wysylany, gdy uzytkownik nacisnie Ctrl+C.
     initialize_semaphores();
     initialize_message_queue();
 
-    // Rejestracja obsługi sygnału SIGINT (Ctrl+C)
+    // Rejestracja obslugi sygnalu SIGINT (Ctrl+C)
     if (signal(SIGINT, signal_handler) == SIG_ERR) {
-        perror("Błąd przy rejestracji obsługi sygnału SIGINT");
+        perror("Blad przy rejestracji obslugi sygnalu SIGINT");
         exit(1);
     }
 
@@ -23,18 +23,18 @@ int main(int argc, char **argv) {
         registration_process();
     } else if (pid > 0) {
         
-        // Pętla w nieskończoność generująca pacjentów
+        // Petla w nieskonczonosc generujaca pacjentow
         while (keep_generating){
-            generate_patients();    // Proces generujący pacjentów
+            generate_patients();    // Proces generujacy pacjentow
         }
 
     } else {
-        perror(" Błąd fork\n");
+        perror(" Blad fork\n");
         exit(1);
     }
     while (wait(NULL) > 0);
-    printf("System zakończył pracę.\n");
-    // W przypadku zakończenia generowania pacjentów lub wyjścia z pętli
+    printf("System zakonczyl prace.\n");
+    // W przypadku zakonczenia generowania pacjentow lub wyjscia z petli
 
     return 0;
 }

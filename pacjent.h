@@ -10,31 +10,31 @@
 #ifndef SA_RESTART
 #define SA_RESTART 0x10000000   
 #endif
-// w razie braku definicji w systemie (np. u mnie się jakieś błędy pojawiały)
+// w razie braku definicji w systemie (np. u mnie sie jakies bledy pojawialy)
 #ifndef SA_NOCLDSTOP
 #define SA_NOCLDSTOP 0x00000001 
 #endif
-#include <semaphore.h> //semafory POSIX dla wątków
+#include <semaphore.h> //semafory POSIX dla watkow
 #include <pthread.h>
 
 #define S 5 // ilosc semaforow w zbiorze
 
 typedef struct {
     int id_pacjent; // numer pacjenta - pid
-    int vip; // 1 jeśli VIP, 0 jeśli nie
+    int vip; // 1 jesli VIP, 0 jesli nie
     int wiek;    // Wiek pacjenta
-    int id_lekarz;  // numer lekarza, do którego pacjent chce się udać
+    int id_lekarz;  // numer lekarza, do ktorego pacjent chce sie udac
 } Pacjent;
 //  struktura pacjenta 
 
 typedef struct {
-    long mtype;       // Typ wiadomości
+    long mtype;       // Typ wiadomosci
     int id_pacjent;   // Numer pacjenta
     int vip;          // Status VIP
     int wiek;         // Wiek pacjenta
     int id_lekarz;    // Numer preferowanego lekarza  
 } Wiadomosc;
-//  struktura wiadomości w rejestracji
+//  struktura wiadomosci w rejestracji
 
 void inicjalizujPacjenta(Pacjent *pacjent){
 

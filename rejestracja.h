@@ -17,22 +17,22 @@
 #include "MyLib/dekoratory.h"
 #include "MyLib/shm_utils.h"
 
-#define BUILDING_MAX 10 // Maksymalna liczba pacjentów w budynku
-#define S 5 // Ilość semaforów w zbiorze
+#define BUILDING_MAX 10 // Maksymalna liczba pacjentow w budynku
+#define S 5 // Ilosc semaforow w zbiorze
 #define PAM_SIZE 6 // Rozmiar tablicy pamieci wspoldzielonej
 
 typedef struct {
-    long mtype;       // Typ wiadomości
+    long mtype;       // Typ wiadomosci
     int id_pacjent;   // Numer pacjenta
     int vip;          // Status VIP
     int wiek;         // Wiek pacjenta
     int id_lekarz;    // Numer preferowanego lekarza  
 } Wiadomosc;
-//  struktura wiadomości w rejestracji
+//  struktura wiadomosci w rejestracji
 
-// Funkcja pomocnicza do obliczania liczby procesów w kolejce
+// Funkcja pomocnicza do obliczania liczby procesow w kolejce
 int policzProcesy(int msg_id) {
-    /* Zlicz liczbę komunikatów w kolejce (w prostym przypadku nieopóźnionym) */
+    /* Zlicz liczbe komunikatow w kolejce (w prostym przypadku nieopoznionym) */
     
     int liczba_procesow = 0;
     struct msqid_ds buf;
@@ -50,10 +50,10 @@ void wypiszPacjentowWKolejce(int msg_id, int semID) {
     printf("Pacjenci w kolejce do rejestracji w momencie zamykania rejestracji:\n");
     while (msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT) != -1) {
         printf("Pacjent nr %d, wiek: %d, vip: %d\n", msg.id_pacjent, msg.wiek, msg.vip);
-        // Informuj pacjenta, że może wyjść z budynku
+        // Informuj pacjenta, ze moze wyjsc z budynku
         signalSemafor(semID, 1);
     }
     if (errno != ENOMSG) {
-        perror("\033[1;31m[wypiszPacjentowWKolejce]: Błąd msgrcv\033[0m");
+        perror("\033[1;31m[wypiszPacjentowWKolejce]: Blad msgrcv\033[0m");
     }
 }

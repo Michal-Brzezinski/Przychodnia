@@ -9,12 +9,12 @@
 #include <sys/msg.h>
 #include <errno.h>
 
-// Deklaracje zmiennych globalnych (muszę mieć do nich dostęp w funkcji obsługi sygnałów)
+// Deklaracje zmiennych globalnych (musze miec do nich dostep w funkcji obslugi sygnalow)
 extern int building_sem_id;
-extern int queue_id;   //volatile używany do zmiennej, która zmienia się przez użycie sygnału np.
-                                        //mówi kompilatorowi żeby niczego nie optymalizował z tą zmienną
+extern int queue_id;   //volatile uzywany do zmiennej, ktora zmienia sie przez uzycie sygnalu np.
+                                        //mowi kompilatorowi zeby niczego nie optymalizowal z ta zmienna
 
-extern volatile int keep_generating;  // Domyślnie generowanie pacjentów jest włączone
+extern volatile int keep_generating;  // Domyslnie generowanie pacjentow jest wlaczone
 
 void cleanup_semaphores();
 void cleanup_message_queue();

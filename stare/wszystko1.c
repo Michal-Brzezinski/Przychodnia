@@ -11,56 +11,56 @@
 #include <sys/msg.h>
 #include <signal.h>
 
-#define MAX_PATIENTS 100 // Maksymalna liczba pacjentów w przychodni
-#define BUILDING_CAPACITY 10 // Maksymalna liczba pacjentów w przychodni
-#define MAX_ADMISSION 3 // Ilość pacjentów przyjmowanych do rejestracji
+#define MAX_PATIENTS 100 // Maksymalna liczba pacjentow w przychodni
+#define BUILDING_CAPACITY 10 // Maksymalna liczba pacjentow w przychodni
+#define MAX_ADMISSION 3 // Ilosc pacjentow przyjmowanych do rejestracji
 
-//volatile int keep_generating = 1;   // Zmienna do kontrolowania generowania pacjentów
+//volatile int keep_generating = 1;   // Zmienna do kontrolowania generowania pacjentow
 
 // Klucz i identyfikator semafora
 key_t building_key;
 int building_sem_id;
 
-// Klucz i identyfikator kolejki komunikatów
+// Klucz i identyfikator kolejki komunikatow
 key_t queue_key;
 int queue_id;
 
-// Struktura wiadomości w kolejce
+// Struktura wiadomosci w kolejce
 typedef struct {
-    long type;    // Typ wiadomości (priorytet: 1 dla VIP, 2 dla zwykłych pacjentów)
+    long type;    // Typ wiadomosci (priorytet: 1 dla VIP, 2 dla zwyklych pacjentow)
     int id;       // ID pacjenta
     int age;      // Wiek pacjenta
-    int is_vip;   // 1 jeśli VIP, 0 jeśli nie
+    int is_vip;   // 1 jesli VIP, 0 jesli nie
 } Message;
 
-// Struktura reprezentująca pacjenta
+// Struktura reprezentujaca pacjenta
 typedef struct {
     int id;
-    int is_vip; // 1 jeśli VIP, 0 jeśli nie
+    int is_vip; // 1 jesli VIP, 0 jesli nie
     int age;    // Wiek pacjenta
 } Patient;
 
-// Wiadomość potwierdzająca dla pacjenta, czy został przyjęty
+// Wiadomosc potwierdzajaca dla pacjenta, czy zostal przyjety
 typedef struct {
-    long type;  // ID pacjenta (odpowiadający `patient.id`)
+    long type;  // ID pacjenta (odpowiadajacy `patient.id`)
     int id;     // Identyfikator pacjenta
 } Confirmation;
 
 void initialize_semaphores() {
     building_key = ftok(".", 'B');  
     if (building_key == -1) {
-        perror("Błąd ftok");
+        perror("Blad ftok");
         exit(1);
     }
 
     building_sem_id = semget(building_key, 1, IPC_CREAT | 0666);
     if (building_sem_id == -1) {
-        perror("Błąd semget");
+        perror("Blad semget");
         exit(1);
     }
 
     if (semctl(building_sem_id, 0, SETVAL, BUILDING_CAPACITY) == -1) {
-        perror("Błąd semctl (SETVAL)");
+        perror("Blad semctl (SETVAL)");
         exit(1);
     }
 }
@@ -68,13 +68,13 @@ void initialize_semaphores() {
 void initialize_message_queue() {
     queue_key = ftok(".", 'Q');  
     if (queue_key == -1) {
-        perror("Błąd ftok (kolejka)");
+        perror("Blad ftok (kolejka)");
         exit(1);
     }
 
     queue_id = msgget(queue_key, IPC_CREAT | 0666);  
     if (queue_id == -1) {
-        perror("Błąd msgget");
+        perror("Blad msgget");
         exit(1);
     }
 }
@@ -82,7 +82,7 @@ void initialize_message_queue() {
 void cleanup_message_queue() {
     if (queue_id != -1) {
         if (msgctl(queue_id, IPC_RMID, NULL) == -1) {
-            perror("Błąd msgctl (usuwanie kolejki)");
+            perror("Blad msgctl (usuwanie kolejki)");
         }
     }
 }
@@ -91,7 +91,7 @@ void cleanup_semaphores() {
     
     if (building_sem_id != -1) {
         if (semctl(building_sem_id, 0, IPC_RMID) == -1) {
-            perror("Błąd semctl (IPC_RMID)");
+            perror("Blad semctl (IPC_RMID)");
         }
     }
 }
@@ -109,14 +109,14 @@ void patient_process(Patient patient) {
     Message msg;
     Confirmation conf;
 
-    printf("Pacjent %d (VIP: %d, Wiek: %d) próbuje wejść do budynku.\n", patient.id, patient.is_vip, patient.age);
+    printf("Pacjent %d (VIP: %d, Wiek: %d) probuje wejsc do budynku.\n", patient.id, patient.is_vip, patient.age);
 
     sem_op.sem_num = 0;
     sem_op.sem_op = -1; // Opuszczenie semafora
-    sem_op.sem_flg = 0; // Zablokuj jeśli brak zasobów
+    sem_op.sem_flg = 0; // Zablokuj jesli brak zasobow
 
     if (semop(building_sem_id, &sem_op, 1) == 0) {
-        printf("Pacjent %d wszedł do budynku.\n", patient.id);
+        printf("Pacjent %d wszedl do budynku.\n", patient.id);
 
         msg.type = patient.is_vip ? 1 : 2; 
         msg.id = patient.id;
@@ -124,18 +124,18 @@ void patient_process(Patient patient) {
         msg.is_vip = patient.is_vip;
 
         if (msgsnd(queue_id, &msg, sizeof(Message) - sizeof(long), 0) == -1) {
-            perror("Błąd wysyłania wiadomości do kolejki");
+            perror("Blad wysylania wiadomosci do kolejki");
             exit(1);
         }
 
         while (1) {
             if (msgrcv(queue_id, &conf, sizeof(Confirmation) - sizeof(long), patient.id, 0) > 0) {
-                printf("Pacjent %d został zarejestrowany.\n", patient.id);
+                printf("Pacjent %d zostal zarejestrowany.\n", patient.id);
                 break;
             } else if (errno == EINTR) {
                 continue; 
             } else {
-                perror("Błąd odbierania potwierdzenia rejestracji");
+                perror("Blad odbierania potwierdzenia rejestracji");
                 break;
             }
         }
@@ -143,10 +143,10 @@ void patient_process(Patient patient) {
         printf("Pacjent %d opuszcza budynek.\n", patient.id);
         sem_op.sem_op = 1; // Zwalnianie miejsca w semaforze
         if (semop(building_sem_id, &sem_op, 1) == -1) {
-            perror("Błąd semop (zwolnienie)");
+            perror("Blad semop (zwolnienie)");
         }
     } else {
-        perror("Błędna wartość zwracana przez semop()");
+        perror("Bledna wartosc zwracana przez semop()");
     }
 
     exit(0);
@@ -165,11 +165,11 @@ void generate_patients() {
         if (pid == 0) {
             patient_process(patient);
         } else if (pid < 0) {
-            perror("Błąd fork");
+            perror("Blad fork");
             exit(1);
         }
 
-        sleep(4); // Odstęp między pacjentami
+        sleep(4); // Odstep miedzy pacjentami
     }
 
     while (wait(NULL) > 0);
@@ -180,11 +180,11 @@ void registration_process() {
     Confirmation conf;
     int patients_admissioned = 0;
 
-    printf("\nRejestracja: Oczekiwanie na pacjentów...\n\n");
+    printf("\nRejestracja: Oczekiwanie na pacjentow...\n\n");
 
     while (patients_admissioned < MAX_ADMISSION) {
         if (msgrcv(queue_id, &msg, sizeof(Message) - sizeof(long), 0, 0) > 0) {
-            printf("Rejestracja: Pacjent %d (VIP: %d, Wiek: %d) zgłosił się.\n", msg.id, msg.is_vip, msg.age);
+            printf("Rejestracja: Pacjent %d (VIP: %d, Wiek: %d) zglosil sie.\n", msg.id, msg.is_vip, msg.age);
 
             conf.type = msg.id;
             conf.id = msg.id;
@@ -192,11 +192,11 @@ void registration_process() {
             sleep(6); // Symulacja czasu rejestracji
 
             if (msgsnd(queue_id, &conf, sizeof(Confirmation) - sizeof(long), 0) == -1) {
-                perror("Błąd wysyłania potwierdzenia");
+                perror("Blad wysylania potwierdzenia");
             }
             patients_admissioned++;
         } else if (errno != EINTR) {
-            perror("Błąd odbierania wiadomości");
+            perror("Blad odbierania wiadomosci");
         }
     }
 }
@@ -205,7 +205,7 @@ int main(int argc, char **argv) {
     srand(time(NULL));
 
     if (signal(SIGINT, signal_handler) == SIG_ERR) {
-        perror("Błąd przy rejestracji obsługi sygnału SIGINT");
+        perror("Blad przy rejestracji obslugi sygnalu SIGINT");
         exit(1);
     }
 
@@ -221,7 +221,7 @@ int main(int argc, char **argv) {
             sleep(1);  
         }
     } else {
-        perror("Błąd fork");
+        perror("Blad fork");
         exit(1);
     }
 

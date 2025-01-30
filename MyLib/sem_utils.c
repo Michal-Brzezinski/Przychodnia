@@ -17,20 +17,20 @@ void zwolnijSemafor(key_t key)
 {
    int semid;
 
-   // Próba uzyskania identyfikatora zbioru semaforów
+   // Proba uzyskania identyfikatora zbioru semaforow
    semid = semget(key, 0, 0666);
    if (semid == -1) {
       if (errno == ENOENT) {
             return;
       } else {
-            perror("Błąd 1 usuwania zbioru semaforów");
+            perror("Blad 1 usuwania zbioru semaforow");
             exit(1);
       }
    }
 
-   // Zbiór semaforów istnieje, więc próbujemy go usunąć
+   // Zbior semaforow istnieje, wiec probujemy go usunac
    if (semctl(semid, 0, IPC_RMID) == -1) {
-      perror("Błąd 2 usuwania zbioru semaforów");
+      perror("Blad 2 usuwania zbioru semaforow");
       exit(1);
    }
 

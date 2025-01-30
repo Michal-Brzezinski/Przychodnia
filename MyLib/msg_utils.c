@@ -16,7 +16,7 @@ int alokujKolejkeKomunikatow(key_t klucz, int flagi){
 int zwolnijKolejkeKomunikatow(key_t klucz) {
     int msgid;
 
-    // Próba uzyskania identyfikatora kolejki komunikatów
+    // Proba uzyskania identyfikatora kolejki komunikatow
     msgid = msgget(klucz, 0666);
     if (msgid == -1) {
         if (errno == ENOENT) {
@@ -27,7 +27,7 @@ int zwolnijKolejkeKomunikatow(key_t klucz) {
         }
     }
 
-    // Kolejka komunikatów istnieje, więc próbujemy ją usunąć
+    // Kolejka komunikatow istnieje, wiec probujemy ja usunac
     if (msgctl(msgid, IPC_RMID, NULL) == -1) {
         perror("Blad msgctl (zwolnijKolejkeKomunikatow)");
         exit(1);
@@ -41,7 +41,7 @@ int zwolnijKolejkeKomunikatow(key_t klucz) {
 int wyslijKomunikat(int msg_id, const void *wskaznik_msg, size_t rozmiar_msg, int flagi){
 
     if (msgsnd(msg_id, &wskaznik_msg, rozmiar_msg, 0) == -1) {
-        perror("Błąd msgsnd - wyslijKomunikat");
+        perror("Blad msgsnd - wyslijKomunikat");
         exit(1);
     }
     return 0;
@@ -52,7 +52,7 @@ ssize_t odbierzKomunikat(int msg_id, void *wskaznik_msg, size_t rozmiar_msg, lon
     ssize_t odbior = msgrcv(msg_id, wskaznik_msg, rozmiar_msg, typ_msg, flagi);
         
     if (odbior == -1) {
-        perror("Błąd msgrcv - odbierzKomunikat");
+        perror("Blad msgrcv - odbierzKomunikat");
         exit(1);
     }
 

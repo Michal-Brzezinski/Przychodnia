@@ -2,13 +2,13 @@
 
 
 int losuj_int(int N) {
-    /*Sposób losowania niezależne od czasu i w miarę możliwości niedeterministyczny*/
+    /*Sposob losowania niezalezne od czasu i w miare mozliwosci niedeterministyczny*/
     
     int losowy;
     unsigned int seed;
     int fd = open("/dev/urandom", O_RDONLY);
     if (fd < 0) {
-        return -1; // Obsłuż błąd otwarcia pliku
+        return -1; // Obsluz blad otwarcia pliku
     }
     read(fd, &seed, sizeof(seed)); // Pobierz losowe dane z /dev/urandom
     close(fd);
@@ -19,55 +19,159 @@ int losuj_int(int N) {
 }
 
 int procentNaNaturalna(int n, int x) {
-    /*Funckcja oblicza x% liczby n, zwracając wynik jako liczbę całkowitą*/
-    double procent = (double)x / 100.0; // Konwersja procentów na ułamek
+    /*Funckcja oblicza x% liczby n, zwracajac wynik jako liczbe calkowita*/
+    double procent = (double)x / 100.0; // Konwersja procentow na ulamek
     double s = floor(n * procent); 
-    // Obliczenie x% liczby n i zaokrąglenie do najniższej liczby całkowitej
-    // To gwarantuje nie wyjść poza zakres podany w argumencie funkcji
-    return (int)s; // Zwrócenie jako liczba całkowita
+    // Obliczenie x% liczby n i zaokraglenie do najnizszej liczby calkowitej
+    // To gwarantuje nie wyjsc poza zakres podany w argumencie funkcji
+    return (int)s; // Zwrocenie jako liczba calkowita
 }
 
 key_t generuj_klucz_ftok(const char *sciezka, char projek_id) { 
-    /* Sprawdza czy zaistniał błąd, jeżeli tak to kończy proces z kodem 1 */
-    /* Jeżeli nie, to zwraca wartość wygenerowanego klucza */
+    /* Sprawdza czy zaistnial blad, jezeli tak to konczy proces z kodem 1 */
+    /* Jezeli nie, to zwraca wartosc wygenerowanego klucza */
 
     key_t klucz; 
 
     if ((klucz = ftok(sciezka, projek_id)) == -1){ 
-        printf("Błąd ftok\n"); 
+        printf("Blad ftok\n"); 
         exit(1); 
     }
 
     return klucz; 
 }
 
-void print_fflush(const char *tekst) {
-    /* Wyświetla tekst z funkcjonalnością fflush */
-    printf("%s\n", tekst);
+void print(const char *format, ...) {
+    // Wyswietla tekst z funkcjonalnoscia fflush
     fflush(stdout);
+    // Wyswietla tekst z funkcjonalnoscia fflush 
+    // Zmienna lista argumentow do printf
+    va_list args;
+    va_start(args, format);
+    vprintf(format, args);
+    fflush(stdout);
+    va_end(args);
+}
+
+void printRed(const char *format, ...) {
+    // funkcja drukujaca w kolorze czerwonym
+    va_list args;
+    va_start(args, format);
+
+    fflush(stdout);
+    // Wywołujemy vprintf z kodami kolorów
+    printf("%s", czerwony);
+    vprintf(format, args);
+    printf("%s", reset);
+
+    va_end(args);
+    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjścia
+}
+
+void printBlue(const char *format, ...) {
+    // funkcja drukujaca w kolorze niebieskim
+    va_list args;
+    va_start(args, format);
+
+    fflush(stdout);
+    // Wywołujemy vprintf z kodami kolorów
+    printf("%s", niebieski);
+    vprintf(format, args);
+    printf("%s", reset);
+
+    va_end(args);
+    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjścia
+}
+
+void printGreen(const char *format, ...) {
+    // funkcja drukujaca w kolorze zielonym
+    va_list args;
+    va_start(args, format);
+
+    fflush(stdout);
+    // Wywołujemy vprintf z kodami kolorów
+    printf("%s", zielony);
+    vprintf(format, args);
+    printf("%s", reset);
+
+    va_end(args);
+    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjścia
+}
+
+void printYellow(const char *format, ...) {
+    // funkcja drukujaca w kolorze zoltym
+    va_list args;
+    va_start(args, format);
+
+    fflush(stdout);
+    // Wywołujemy vprintf z kodami kolorów
+    printf("%s", zolty);
+    vprintf(format, args);
+    printf("%s", reset);
+
+    va_end(args);
+    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjścia
+}
+
+void printCyan(const char *format, ...) {
+    // funkcja drukujaca w kolorze cyjan 
+    va_list args;
+    va_start(args, format);
+
+    fflush(stdout);
+    // Wywołujemy vprintf z kodami kolorów
+    printf("%s", cyjan);
+    vprintf(format, args);
+    printf("%s", reset);
+
+    va_end(args);
+    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjścia
+}
+
+void printMagenta(const char *format, ...) {
+    // Ustawiamy kolor tekstu na magenta i przygotowujemy kolorowanie
+    va_list args;
+    va_start(args, format);
+
+    fflush(stdout);
+    // Wywołujemy vprintf z kodami kolorów
+    printf("%s", magenta);
+    vprintf(format, args);
+    printf("%s", reset);
+
+    va_end(args);
+    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjścia
 }
 
 
-void printRed(const char *tekst) {
-    /* Wyświetla tekst w kolorze czerwonym */
-    printf("%s%s%s\n", czerwony, tekst, reset);
+void perror_red(const char *s) {
+    // funkcja drukujaca komunikat bledu w kolorze czerwonym
+    fflush(stdout);
+    // Ustawiamy kolor na czerwony
+    printf("%s", czerwony);
+    fflush(stdout);
+
+    // Jesli uzytkownik podal komunikat, drukujemy go
+    if (s) {
+        printf("%s: ", s);
+        fflush(stdout);
+    }
+
+    // Drukujemy komunikat bledu zgodnie z errno
+    printf("%s", strerror(errno));
+    fflush(stdout);
+
+
+    // Resetujemy kolor
+    printf("%s", reset);
     fflush(stdout);
 }
 
-void printBlue(const char *tekst) {
-    /* Wyświetla tekst w kolorze niebieskim */
-    printf("%s%s%s\n", niebieski, tekst, reset);
-    fflush(stdout);
+void wyczyscProcesyPacjentow()
+{
+system("killall pacjent");
 }
 
-void printGreen(const char *tekst) {
-    /* Wyświetla tekst w kolorze zielonym */
-    printf("%s%s%s\n", zielony, tekst, reset);
-    fflush(stdout);
-}
-
-void printYellow(const char *tekst) {
-    /* Wyświetla tekst w kolorze żółtym */
-    printf("%s%s%s\n", zolty, tekst, reset);
-    fflush(stdout);
+void usunNiepotrzebnePliki(){
+system("bash czystka.sh");
 }
