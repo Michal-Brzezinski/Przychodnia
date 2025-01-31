@@ -85,7 +85,9 @@ int main(){
     }
 
     waitSemafor(semID, 1, 0);   // czeka az przyjdzie komunikat
-
+    if(valueSemafor(semID, 2)==0) signalSemafor(semID, 1);  
+    // oznajmia innym, ktorzy nie zdazyli przed zamknieciem, ze mozna wyjsc
+    // jezeli valueSemafor(semID, 2)==0 to znaczy ze rejestracja juz zamknieta
 
     if(valueSemafor(semID, 2)==1)   signalSemafor(semID, 0);    // zwolnienie semafora wejscia do budynku
     if(pacjent.wiek >= 18)

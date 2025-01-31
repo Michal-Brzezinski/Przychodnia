@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 
     // Godziny otwarcia i zamkniecia rejestracji (w sekundach od polnocy)
     int Tp = current_time;      // Aktualny czas
-    int Tk = current_time + 25; // Aktualny czas + x sekund
+    int Tk = current_time + 10; // Aktualny czas + x sekund
 
     pamiec_wspoldzielona = dolaczPamiecWspoldzielona(shm_id, 0);
 
@@ -176,10 +176,6 @@ int main(int argc, char *argv[])
             perror_red("[Rejestracja - 1 okienko]: Blad msgsnd - pacjent\n");
             exit(1);
         }
-        
-
-        /*Obsluga wysylania pacjenta do danego lekarza*/
-
 
         // Sprawdz liczbe procesow oczekujacych na rejestracje ponownie
         int liczba_procesow = policzProcesy(msg_id_rej);
@@ -210,6 +206,8 @@ int main(int argc, char *argv[])
     //wypiszPacjentowWKolejce(msg_id_rej, semID);
     printYellow("[Rejestracja]: Rejestracja zakonczyla dzialanie\n");
     
+    signalSemafor(sem_id,1); // oznajmia wyjscie tym, ktorzy nie zdazyli przed zamknieciem rejestracji
+
     return 0;
 }
 

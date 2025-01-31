@@ -32,8 +32,8 @@ GENEROWANIA PROCESÓW POTOMNYCH - LEKARZY, PACJENTÓW I REJESTRACJI
 #include "MyLib/shm_utils.h"
 
 #define S 5     // ilosc semaforow w zbiorze - w razie potrzeby zwiekszyc
-#define BUILDING_MAX 10     // maksymalna pojemnosc pacjentow w budynku 
-#define MAX_GENERATE 300   // maksymalna liczba procesow pacjentow do wygenerowania
+#define BUILDING_MAX 4     // maksymalna pojemnosc pacjentow w budynku 
+#define MAX_GENERATE 30   // maksymalna liczba procesow pacjentow do wygenerowania
 #define PAM_SIZE 7 // Rozmiar tablicy pamieci wspoldzielonej
 // struktura pamieci wspoldzielonej
 // pamiec_wspoldzielona[0] - wspolny licznik pacjentow
@@ -243,6 +243,7 @@ int main(){
             //jesli zaden proces nie jest gotowy do zakonczenia - flaga WNOHANG
             sleep(1); // Opoznienien w generowaniu kolejnych pacjentow
         }
+        while (waitpid(-1, NULL, WNOHANG) > 0);
         exit(0); // Zakoncz proces potomny po wygenerowaniu pacjentow
     }
     
@@ -259,6 +260,15 @@ int main(){
         print("[Main]: Proces generowania lekarzy  zakonczony niepowodzeniem.\n");
     
 
+    pid_t child_pid1 = fork();
+    if (child_pid1 == 0) { // Proces potomny
+        // Czekaj na zakonczenie procesu generowania lekarzy, jesli nie zostal zakonczony wczesniej
+
+        oczekujNaProces(rejestracja_pid, "rejestracja");
+        exit(0); // Proces potomny kończy działanie
+    }
+    else if (child_pid1 < 0) perror_red("[Main]: Blad fork - czekanie na rejestracje\n");
+
     // Czekaj na zakonczenie procesu generowania pacjentow, jesli nie zostal zakonczony wczesniej
     status =0;
     waitpid(generator_pacjentow_pid, &status, 0);
@@ -266,15 +276,6 @@ int main(){
         print("[Main]: Proces generowania pacjentow zakonczony z kodem %d.\n", WEXITSTATUS(status));
     else 
         print("[Main]: Proces generowania pacjentow  zakonczony niepowodzeniem.\n");
-    
-
-    // Czekaj na zakonczenie procesu rejestracja, jesli nie zostal zakonczony wczesniej
-    status=0;
-    waitpid(rejestracja_pid, &status, 0);
-    if (WIFEXITED(status)) 
-        print("[Main]: Proces rejestracji zakonczony z kodem %d.\n", WEXITSTATUS(status));
-    else 
-        print("[Main]: Proces rejestracji zakonczony niepowodzeniem.\n");
     
 
     // KONCZENIE PRACY PROGRAMU: KONCZENIE ZBEDNYCH PROCESOW I ZWALNIANIE ZASOBOW 
