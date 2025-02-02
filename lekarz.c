@@ -1,10 +1,19 @@
 #include "lekarz.h"
 
+pthread_t POZ2;
+
 int* pamiec_wspoldzielona; // Wskaznik do pamieci wspoldzielonej
 // pamiec_wspoldzielona[0] - wspolny licznik pacjentow
 
+volatile int zakoncz_program = 0;
+
 int shmID, semID, msg_id_lekarz, msg_id_rejestracja;
 key_t klucz_pamieci, klucz_sem, klucz_kolejki_lekarza, klucz_kolejki_rejestracji;
+
+int pomocniczy_limit_POZ; // globalne do ulatwienia dzialania programu 
+
+void *lekarzPOZ2(void* _arg);
+void obsluga_SIGINT(int sig);
 
 int main(int argc, char *argv[])
 {
@@ -41,8 +50,6 @@ int main(int argc, char *argv[])
     }
     inicjalizuj_lekarza(&lekarz, id_lekarz, limit_indywidualny);
 
-    printMagenta("[Lekarz]: Wygenerowano lekarza: %s o id: %d, limit pacjentow: %d\n", lekarz.nazwa, lekarz.id_lekarz, lekarz.indywidualny_limit);
-
     //  ____________________   INICJALIZACJA  ZASOBOW IPC   _____________________
 
     klucz_pamieci = generuj_klucz_ftok(".", 'X');
@@ -62,10 +69,41 @@ int main(int argc, char *argv[])
     // klucz generowany jest na bazie znaku reprezentujacego lekarza
     msg_id_lekarz = alokujKolejkeKomunikatow(klucz_kolejki_lekarza, IPC_CREAT | 0600);
 
+    // ______________________ OBSLUGA HANDLERA _____________________________
+
+    struct sigaction sa;
+    sa.sa_handler = obsluga_SIGINT; // Funkcja obslugujaca SIGINT
+    sigemptyset(&sa.sa_mask);       // Wyzerowanie maski sygnalow
+    sa.sa_flags = SA_RESTART | SA_NOCLDSTOP; // To samo co przy pacjencie
+
+    sigaction(SIGINT, &sa, NULL);   // Ustawienie obsługi SIGINT
+
+
+
+    //  ___________________________ OBSLUGA WATKU POZ2 ___________________________
+    if (lekarz.id_lekarz==1){
+        pomocniczy_limit_POZ = lekarz.indywidualny_limit/2;
+        lekarz.indywidualny_limit -= pomocniczy_limit_POZ;
+
+        Lekarz lekarz2 = lekarz;
+        //strcpy(lekarz2.nazwa, "POZ2");
+        int utworz_drugiegoPOZ=pthread_create(&POZ2,NULL,lekarzPOZ2,(void*)&lekarz2);
+        if (utworz_drugiegoPOZ==-1) {
+            perror_red("[Lekarz]: Blad pthread_create - tworzenie drugiego lekarza POZ\n");
+            exit(1);
+        }
+
+        printMagenta("[Lekarz]: Wygenerowano 2 lekarzy: %s o id: %d, limity pacjentow: %d, %d\n", lekarz.nazwa, lekarz.id_lekarz, lekarz.indywidualny_limit, pomocniczy_limit_POZ);
+        }
+    else printMagenta("[Lekarz]: Wygenerowano lekarza: %s o id: %d, limit pacjentow: %d\n", lekarz.nazwa, lekarz.id_lekarz, lekarz.indywidualny_limit);
     // ________________________________________________________________________________________________________
 
+    if(lekarz.id_lekarz==1)sprintf(lekarz.nazwa, "POZ1");
     czynnosci_lekarskie(&lekarz);   // symulacja pracy lekarza
 
+    if (lekarz.id_lekarz == 1) {
+    pthread_join(POZ2, NULL);  // Upewniamy sie, ze drugi lekarz POZ zakonczyl prace
+}
     return 0;
 }
 
@@ -81,7 +119,7 @@ void czynnosci_lekarskie(Lekarz *lekarz){
 
     // Godziny otwarcia i zamkniecia rejestracji (w sekundach od polnocy)
     int Tp = current_time;      // Aktualny czas
-    int Tk = current_time + 10; // Aktualny czas + x sekund 
+    int Tk = current_time + 30; // Aktualny czas + x sekund 
 
     
     // Glowna petla dzialania lekarza
@@ -140,4 +178,24 @@ void czynnosci_lekarskie(Lekarz *lekarz){
     }
     
     return;
+}
+
+
+void *lekarzPOZ2(void *_arg) {
+    Lekarz *lekarz= (Lekarz *) _arg;
+    strncpy(lekarz->nazwa, "POZ2", sizeof(lekarz->nazwa) - 1); // Kopiowanie nazwy
+    printMagenta("[%s]: Lekarz rozpoczal dzialanie\n",lekarz->nazwa);
+    lekarz->indywidualny_limit = pomocniczy_limit_POZ; // tutaj sie przydaje ta zmienna globalna
+    czynnosci_lekarskie(lekarz); 
+    return NULL;
+}
+
+void obsluga_SIGINT(int sig) {
+    zakoncz_program = 1;
+
+    if (POZ2) {  // Sprawdz, czy wątek zostal utworzony
+        pthread_join(POZ2, NULL);
+    }
+    
+    exit(0);
 }

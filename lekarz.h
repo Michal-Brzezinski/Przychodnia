@@ -3,6 +3,17 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <pthread.h>
+#include <signal.h>
+#include <string.h>
+
+#ifndef SA_RESTART
+#define SA_RESTART 0x10000000   
+#endif
+// w razie braku definicji w systemie (np. u mnie sie jakies bledy pojawialy)
+#ifndef SA_NOCLDSTOP
+#define SA_NOCLDSTOP 0x00000001 
+#endif
 
 #include "MyLib/dekoratory.h"
 #include "MyLib/msg_utils.h"

@@ -3,7 +3,7 @@ all: mainprog pacjent rejestracja lekarz
 
 # Kompilowanie programu mainprog
 mainprog: mainprog.o MyLib/sem_utils.o MyLib/msg_utils.o MyLib/dekoratory.o MyLib/shm_utils.o
-	@gcc -o mainprog $^ -lm  # Dodanie -lm tutaj
+	@gcc -o mainprog $^ -lm  
 
 # Kompilowanie pliku mainprog.o
 mainprog.o: mainprog.c MyLib/sem_utils.h MyLib/msg_utils.h MyLib/dekoratory.h MyLib/shm_utils.h
@@ -15,7 +15,7 @@ MyLib/sem_utils.o: MyLib/sem_utils.c MyLib/sem_utils.h
 
 # Kompilowanie programu pacjent
 pacjent: pacjent.o MyLib/sem_utils.o MyLib/msg_utils.o MyLib/dekoratory.o
-	@gcc -o pacjent $^ -lpthread -lm  # Dodanie -lm tutaj
+	@gcc -o pacjent $^ -lpthread -lm  
 
 # Kompilowanie pliku pacjent.o
 pacjent.o: pacjent.c MyLib/sem_utils.h MyLib/msg_utils.h MyLib/dekoratory.h pacjent.h
@@ -27,7 +27,7 @@ MyLib/msg_utils.o: MyLib/msg_utils.c MyLib/msg_utils.h
 
 # Kompilowanie MyLib/dekoratory.o
 MyLib/dekoratory.o: MyLib/dekoratory.c MyLib/dekoratory.h
-	@gcc -c -o MyLib/dekoratory.o MyLib/dekoratory.c -lm  # Dodanie -lm tutaj
+	@gcc -c -o MyLib/dekoratory.o MyLib/dekoratory.c -lm  
 
 # Kompilowanie MyLib/shm_utils.o
 MyLib/shm_utils.o: MyLib/shm_utils.c MyLib/shm_utils.h
@@ -35,7 +35,7 @@ MyLib/shm_utils.o: MyLib/shm_utils.c MyLib/shm_utils.h
 
 # Kompilowanie programu rejestracja
 rejestracja: rejestracja.o MyLib/sem_utils.o MyLib/msg_utils.o MyLib/dekoratory.o MyLib/shm_utils.o
-	@gcc -o rejestracja $^ -lm  # Dodanie -lm tutaj
+	@gcc -o rejestracja $^ -lm 
 
 # Kompilowanie pliku rejestracja.o
 rejestracja.o: rejestracja.c MyLib/sem_utils.h MyLib/msg_utils.h MyLib/shm_utils.h MyLib/dekoratory.h pacjent.h rejestracja.h
@@ -43,7 +43,7 @@ rejestracja.o: rejestracja.c MyLib/sem_utils.h MyLib/msg_utils.h MyLib/shm_utils
 
 # Kompilowanie programu lekarz
 lekarz: lekarz.o MyLib/dekoratory.o MyLib/sem_utils.o MyLib/msg_utils.o MyLib/shm_utils.o
-	@gcc -o lekarz $^ -lm  # Dodanie -lm tutaj
+	@gcc -o lekarz $^ -lpthread -lm  
 
 # Kompilowanie pliku lekarz.o
 lekarz.o: lekarz.c MyLib/dekoratory.h MyLib/sem_utils.h MyLib/msg_utils.h lekarz.h MyLib/shm_utils.h

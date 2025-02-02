@@ -35,5 +35,6 @@ void printMagenta(const char *format, ...);
 void perror_red(const char *s);
 int procentNaNaturalna(int n, int x);
 void oczekujNaProces(pid_t pid, const char *nazwa_procesu);
+void czekaj_na_procesy(pid_t *pid_array, int size);
 void wyczyscProcesyPacjentow();
 void usunNiepotrzebnePliki();

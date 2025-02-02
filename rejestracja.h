@@ -17,7 +17,7 @@
 #include "MyLib/dekoratory.h"
 #include "MyLib/shm_utils.h"
 
-#define BUILDING_MAX 10 // Maksymalna liczba pacjentow w budynku
+#define BUILDING_MAX 5 // Maksymalna liczba pacjentow w budynku
 #define S 5 // Ilosc semaforow w zbiorze
 #define PAM_SIZE 6 // Rozmiar tablicy pamieci wspoldzielonej
 
@@ -46,7 +46,7 @@ int policzProcesy(int msg_id) {
     int liczba_procesow = 0;
     struct msqid_ds buf;
     if (msgctl(msg_id, IPC_STAT, &buf) == -1) {
-        perror("\033[1;31m[policzProcesy]: msgctl IPC_STAT\033[0m\n");
+        perror_red("[policzProcesy]: msgctl IPC_STAT\n");
         return -1;
     }
     liczba_procesow = buf.msg_qnum;
@@ -63,6 +63,6 @@ void wypiszPacjentowWKolejce(int msg_id, int semID) {
         signalSemafor(semID, 1);
     }
     if (errno != ENOMSG) {
-        perror("\033[1;31m[wypiszPacjentowWKolejce]: Blad msgrcv\033[0m");
+        perror_red("[wypiszPacjentowWKolejce]: Blad msgrcv\n");
     }
 }

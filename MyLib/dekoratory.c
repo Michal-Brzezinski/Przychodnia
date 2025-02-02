@@ -179,6 +179,14 @@ void oczekujNaProces(pid_t pid, const char *nazwa_procesu) {
 
 }
 
+void czekaj_na_procesy(pid_t *pid_array, int size) {
+    for (int i = 0; i < size; i++) {
+        if (pid_array[i] > 0) {
+            waitpid(pid_array[i], NULL, 0);
+        }
+    }
+}
+
 void wyczyscProcesyPacjentow()
 {
 system("killall pacjent");

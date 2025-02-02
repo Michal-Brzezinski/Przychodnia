@@ -34,7 +34,7 @@ int main(){
     inicjalizujWiadomosc(&msg, &pacjent);
 
     key_t klucz_wejscia = generuj_klucz_ftok(".",'A');
-    int semID = alokujSemafor(klucz_wejscia, S, IPC_CREAT | 0600);
+    int sem_id = alokujSemafor(klucz_wejscia, S, IPC_CREAT | 0600);
 
     key_t msg_key = generuj_klucz_ftok(".",'B');
     int msg_id = alokujKolejkeKomunikatow(msg_key,IPC_CREAT | 0600);
@@ -57,9 +57,9 @@ int main(){
     printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d probuje wejsc do budynku z opiekunem\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
 
 
-    while (valueSemafor(semID, 2) == 0);   // czeka na otwarcie rejestracji (zapewnia, ze nikogo nie wpuszczamy do budynku przed otwarciem rejestracji)    
+    while (valueSemafor(sem_id, 2) == 0);   // czeka na otwarcie rejestracji (zapewnia, ze nikogo nie wpuszczamy do budynku przed otwarciem rejestracji)    
 
-    waitSemafor(semID, 0, 0);   /* SPRAWDZA CZY MOŻE WEJŚĆ DO BUDYNKU BAZUJĄC NA SEMAFORZE*/
+    waitSemafor(sem_id, 0, 0);   /* SPRAWDZA CZY MOŻE WEJŚĆ DO BUDYNKU BAZUJĄC NA SEMAFORZE*/
     
     if(pacjent.wiek >= 18)
     printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
@@ -84,12 +84,12 @@ int main(){
         exit(1);
     }
 
-    waitSemafor(semID, 1, 0);   // czeka az przyjdzie komunikat
-    if(valueSemafor(semID, 2)==0) signalSemafor(semID, 1);  
+    waitSemafor(sem_id, 1, 0);   // czeka az przyjdzie komunikat
+    if(valueSemafor(sem_id, 2)==0) signalSemafor(sem_id, 1);  
     // oznajmia innym, ktorzy nie zdazyli przed zamknieciem, ze mozna wyjsc
-    // jezeli valueSemafor(semID, 2)==0 to znaczy ze rejestracja juz zamknieta
+    // jezeli valueSemafor(sem_id, 2)==0 to znaczy ze rejestracja juz zamknieta
 
-    if(valueSemafor(semID, 2)==1)   signalSemafor(semID, 0);    // zwolnienie semafora wejscia do budynku
+    if(valueSemafor(sem_id, 2)==1)   signalSemafor(sem_id, 0);    // zwolnienie semafora wejscia do budynku
     if(pacjent.wiek >= 18)
     printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedl z budynku\n",msg.id_pacjent, msg.wiek, msg.vip);
     else
