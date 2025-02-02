@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
     
     // Godziny otwarcia i zamkniecia rejestracji (w sekundach od polnocy)
     int Tp = current_time;      // Aktualny czas
-    int Tk = current_time + 30; // Aktualny czas + x sekund
+    int Tk = current_time + 8; // Aktualny czas + x sekund
     
     pamiec_wspoldzielona = dolaczPamiecWspoldzielona(shm_id, 0);
     
@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
     printRed("[Rejestracja]: Zablokowano wejscie nowych pacjentow do budynku\n");
     inicjalizujSemafor(sem_id, 0, 0); // Zablokuj semafor wejscia do budynku
     waitSemafor(sem_id, 2, 0);        // Oznajmij zakonczenie rejestracji
-    //signalSemafor(sem_id, 1); -> ten jest niepewny
+    signalSemafor(sem_id, 1);
     wypiszPacjentowWKolejce(msg_id_rej, sem_id);
     
     printYellow("[Rejestracja]: Czekam na sygnal zakonczenia generowania pacjentow...\n");

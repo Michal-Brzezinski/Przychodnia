@@ -31,8 +31,8 @@ GENEROWANIA PROCESÓW POTOMNYCH - LEKARZY, PACJENTÓW I REJESTRACJI
 #include "MyLib/shm_utils.h"
 
 #define S 5             // ilosc semaforow w zbiorze - w razie potrzeby zwiekszyc
-#define BUILDING_MAX 5  // maksymalna pojemnosc pacjentow w budynku
-#define MAX_GENERATE 25 // maksymalna liczba procesow pacjentow do wygenerowania
+#define BUILDING_MAX 3  // maksymalna pojemnosc pacjentow w budynku
+#define MAX_GENERATE 30 // maksymalna liczba procesow pacjentow do wygenerowania
 #define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej
 // struktura pamieci wspoldzielonej
 // pamiec_wspoldzielona[0] - wspolny licznik pacjentow
@@ -40,7 +40,6 @@ GENEROWANIA PROCESÓW POTOMNYCH - LEKARZY, PACJENTÓW I REJESTRACJI
 // pamiec_wspoldzielona[6] - licznik procesow, ktore zapisaly do pamieci dzielonej
 
 volatile sig_atomic_t keep_generating = 1;
-pid_t generator_pacjentow_pid = -1;
 pid_t generator_lekarzy_pid = -1;
 pid_t rejestracja_pid = -1;
 pid_t lekarze_pid[5];             // Tablica do przechowywania PID-ów procesów lekarzy
@@ -75,12 +74,6 @@ void handle_sigchld(int sig)
 void handle_sigint(int sig)
 {
     keep_generating = 0;
-
-    // Zakoncz procesy potomne
-    if (generator_pacjentow_pid > 0)
-    {
-        kill(generator_pacjentow_pid, SIGTERM);
-    }
 
     if (generator_lekarzy_pid > 0)
     {
@@ -169,7 +162,8 @@ int main()
 
     //-----------------------   REJESTRACJA  -------------------------------
 
-    switch (fork())
+    rejestracja_pid = fork();
+    switch (rejestracja_pid)
     {
     case -1:
         perror_red("[Main]: Blad fork dla rejestracji\n");
@@ -182,7 +176,7 @@ int main()
         perror_red("[Main]: Blad execl dla rejestracji\n");
         exit(3);
     default:
-        break; // Kontynuuj generowanie pacjentow
+        break; // Kontynuuj generowanie pozostalych procesow
     }
 
     /*--------------------------    LEKARZE   ---------------------------------------*/
@@ -236,71 +230,37 @@ int main()
     // Utworz proces potomny do generowania pacjentow
     // Aby proces rodzic mogl wykonywac inne zadania
 
-    generator_pacjentow_pid = fork();
-    if (generator_pacjentow_pid == -1)
-    {
-        perror_red("[Main]: Blad fork dla generatora pacjentow\n");
-        exit(2);
-    }
-    else if (generator_pacjentow_pid == 0)
-    {
         // Proces potomny: generowanie pacjentow
         // Teoretycznie ma ten sam handler zakonczenia procesow dzieci
-        for (i = 0; i < MAX_GENERATE && keep_generating; i++)
+    for (i = 0; i < MAX_GENERATE && keep_generating; i++)
+    {
+        pid_t pid = fork();
+        if (pid == -1)
         {
-            pid_t pid = fork();
-            if (pid == -1)
-            {
-                perror_red("[Main]: Blad fork (generator pacjentow) - probuj generowac pacjentow dalej\n");
-                break;
-            }
-            else if (pid == 0)
-            {
-                execl("./pacjent", "pacjent", NULL);
-                perror_red("[Main]: Blad execl dla pacjenta\n");
-                exit(2);
-            }
-            else
-                pacjenci_pid[i] = pid;
-            // Proces rodzic: sprawdz zakonczenie procesu potomnego bez blokowania
-            // while (waitpid(-1, NULL, WNOHANG) > 0);
-            // prawdza, czy jakikolwiek proces potomny zakonczyl sie, ale nie blokuje,
-            // jesli zaden proces nie jest gotowy do zakonczenia - flaga WNOHANG
-            sleep(1); // Opoznienien w generowaniu kolejnych pacjentow
+            perror_red("[Main]: Blad fork (generator pacjentow) - probuj generowac pacjentow dalej\n");
+            break;
         }
-        while (waitpid(-1, NULL, WNOHANG) > 0)
-            ;
-        keep_generating = 0;
-        exit(0); // Zakoncz proces potomny po wygenerowaniu pacjentow
+        else if (pid == 0)
+        {
+            execl("./pacjent", "pacjent", NULL);
+            perror_red("[Main]: Blad execl dla pacjenta\n");
+            exit(2);
+        }
+        else
+            pacjenci_pid[i] = pid;
+        // Proces rodzic: sprawdz zakonczenie procesu potomnego bez blokowania
+        // while (waitpid(-1, NULL, WNOHANG) > 0);
+        // prawdza, czy jakikolwiek proces potomny zakonczyl sie, ale nie blokuje,
+        // jesli zaden proces nie jest gotowy do zakonczenia - flaga WNOHANG
+        sleep(1); // Opoznienien w generowaniu kolejnych pacjentow
     }
+    while (waitpid(-1, NULL, WNOHANG) > 0);
+    keep_generating = 0;
+        //exit(0); // Zakoncz proces potomny po wygenerowaniu pacjentow
+
 
     /*  -----------   OBSŁUGA POMYŚLNEGO ZAKOŃCZENIA PROGRAMU    ----------- */
     /*   ---------- (ZWOLNIENIE ZASOBÓW I CZEKANIE NA PROCESY) -----------   */
-
-    // Czekaj na zakonczenie procesu generowania lekarzy, jesli nie zostal zakonczony wczesniej
-    // int status;
-    // waitpid(generator_lekarzy_pid, &status, 0);
-    // if (WIFEXITED(status))
-    //     print("[Main]: Proces generowania lekarzy zakonczony z kodem %d.\n", WEXITSTATUS(status));
-    // else
-    //     print("[Main]: Proces generowania lekarzy  zakonczony niepowodzeniem.\n");
-
-    // pid_t child_pid1 = fork();
-    // if (child_pid1 == 0) { // Proces potomny
-    //     // Czekaj na zakonczenie procesu generowania lekarzy, jesli nie zostal zakonczony wczesniej
-
-    //     oczekujNaProces(rejestracja_pid, "rejestracja");
-    //     exit(0); // Proces potomny kończy działanie
-    // }
-    // else if (child_pid1 < 0) perror_red("[Main]: Blad fork - czekanie na rejestracje\n");
-
-    // Czekaj na zakonczenie procesu generowania pacjentow, jesli nie zostal zakonczony wczesniej
-    // status =0;
-    // waitpid(generator_pacjentow_pid, &status, 0);
-    // if (WIFEXITED(status))
-    //     print("[Main]: Proces generowania pacjentow zakonczony z kodem %d.\n", WEXITSTATUS(status));
-    // else
-    //     print("[Main]: Proces generowania pacjentow  zakonczony niepowodzeniem.\n");
 
     while (keep_generating)
     { // dziala tak dlugo jak nie konczy sie generowanie pacjentow
@@ -308,9 +268,9 @@ int main()
     }
 
     // Czekanie na zakończenie procesów potomnych
-    waitpid(generator_pacjentow_pid, NULL, 0);
+    // waitpid(generator_pacjentow_pid, NULL, 0);
     waitpid(generator_lekarzy_pid, NULL, 0);
-    //waitpid(rejestracja_pid, NULL, 0);
+    waitpid(rejestracja_pid, NULL, 0);
 
 
     for (int i = 0; i < 5; i++) {
@@ -331,27 +291,12 @@ int main()
         }
     }
 
-    // Oczekiwanie na zakończenie wszystkich procesów z tablicy pacjenci_pid
-    for (int i = 0; i < MAX_GENERATE; i++) {
-        if (pacjenci_pid[i] > 0) {  // Sprawdzamy, czy PID jest prawidłowy
-            int status;
-            pid_t result = waitpid(pacjenci_pid[i], &status, 0);
-            if (result == -1) {
-                // Błąd oczekiwania na proces (np. proces już zakończył działanie)
-                continue;
-            } else {
-                // Proces zakończył działanie
-                if (WIFEXITED(status)) {
-                    print("[Main]: Proces pacjenta o PID %d zakończył się z kodem wyjścia %d\n", pacjenci_pid[i], WEXITSTATUS(status));
-                } else if (WIFSIGNALED(status)) {
-                    print("[Main]: Proces pacjenta o PID %d został zakończony sygnałem %d\n", pacjenci_pid[i], WTERMSIG(status));
-                }
-            }
-        }
-    }
-
     // KONCZENIE PRACY PROGRAMU: KONCZENIE ZBEDNYCH PROCESOW I ZWALNIANIE ZASOBOW
     wyczyscProcesyPacjentow();
+    int status;
+    while (waitpid(-1, &status, WNOHANG) > 0);
+    // Po zamknieciu ewentualnych pozostalych pacjentow, oczekuje na ich zakonczenie by uniknac zombie
+
     // Zakoncz wszystkie procesy pacjentow, ktore nie zdazyly sie zakonczyc, po zakonczeniu generatora pacjentow
     // i zakonczeniu rejestracji, aby nie prosily o nieistniejace juz zasoby
     zwolnijSemafor(klucz_wejscia);
@@ -365,5 +310,6 @@ int main()
 
     usunNiepotrzebnePliki();
 
+    print("[Main]: Glowny proces zakonczyl sie po zakonczeniu wygenerowanych procesow\n");
     return 0;
 }

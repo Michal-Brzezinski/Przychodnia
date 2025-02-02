@@ -119,7 +119,7 @@ void czynnosci_lekarskie(Lekarz *lekarz){
 
     // Godziny otwarcia i zamkniecia rejestracji (w sekundach od polnocy)
     int Tp = current_time;      // Aktualny czas
-    int Tk = current_time + 30; // Aktualny czas + x sekund 
+    int Tk = current_time + 8; // Aktualny czas + x sekund 
 
     
     // Glowna petla dzialania lekarza

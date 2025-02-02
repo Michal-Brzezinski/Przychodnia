@@ -17,7 +17,7 @@
 #include "MyLib/dekoratory.h"
 #include "MyLib/shm_utils.h"
 
-#define BUILDING_MAX 5 // Maksymalna liczba pacjentow w budynku
+#define BUILDING_MAX 3 // Maksymalna liczba pacjentow w budynku
 #define S 5 // Ilosc semaforow w zbiorze
 #define PAM_SIZE 6 // Rozmiar tablicy pamieci wspoldzielonej
 
