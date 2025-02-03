@@ -31,8 +31,8 @@ GENEROWANIA PROCESÓW POTOMNYCH - LEKARZY, PACJENTÓW I REJESTRACJI
 #include "MyLib/shm_utils.h"
 
 #define S 5             // ilosc semaforow w zbiorze - w razie potrzeby zwiekszyc
-#define BUILDING_MAX 3  // maksymalna pojemnosc pacjentow w budynku
-#define MAX_GENERATE 30 // maksymalna liczba procesow pacjentow do wygenerowania
+#define BUILDING_MAX 7  // maksymalna pojemnosc pacjentow w budynku
+#define MAX_GENERATE 100 // maksymalna liczba procesow pacjentow do wygenerowania
 #define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej
 // struktura pamieci wspoldzielonej
 // pamiec_wspoldzielona[0] - wspolny licznik pacjentow
@@ -49,12 +49,15 @@ int shm_id; // id pamieci wspoldzielonej
 int *pamiec_wspoldzielona;
 int sem_id;            // id zbioru semaforow
 int msg_id_rej;       // id kolejki do rejestracji
+int msg_id_wyjscie;    // kolejka sluzaca do odpowiedniego sygnalizowania 
+                      //  pacjentom kiedy powinni wyjsc z przychodni
 int msg_id_POZ;       // id 1. kolejki POZ
 int msg_id_KARDIO;    // id 2. kolejki KARDIOLOGA
 int msg_id_OKUL;      // id 3. kolejki OKULISTY
 int msg_id_PED;       // id 4. kolejki PEDIATRY
 int msg_id_MP;        // id 5. kolejki LEKARZA MEDYCYNY PRACY
 key_t klucz_wejscia;  // klucz do semafora panujacego nad iloscia pacjentow w budynku
+key_t klucz_wyjscia;  // klucz odpowiedni dla msg_id_wyjscie
 key_t shm_key;        // klucz do pamieci wspoldzielonej
 key_t msg_key_rej;    // klucz do kolejki do rejestracji
 key_t msg_key_POZ;    // klucz do kolejki do POZ
@@ -88,6 +91,7 @@ void handle_sigint(int sig)
     // Zwolnij zasoby IPC
     zwolnijSemafor(klucz_wejscia);
     zwolnijKolejkeKomunikatow(msg_key_rej);
+    zwolnijKolejkeKomunikatow(klucz_wyjscia);
     zwolnijPamiecWspoldzielona(shm_key);
     zwolnijKolejkeKomunikatow(msg_key_POZ);
     zwolnijKolejkeKomunikatow(msg_key_KARDIO);
@@ -117,6 +121,9 @@ int main()
 
     msg_key_rej = generuj_klucz_ftok(".", 'B');
     msg_id_rej = alokujKolejkeKomunikatow(msg_key_rej, IPC_CREAT | IPC_EXCL | 0600);
+
+    klucz_wyjscia = generuj_klucz_ftok(".", 'W');
+    msg_id_wyjscie = alokujKolejkeKomunikatow(klucz_wyjscia, IPC_CREAT | IPC_EXCL | 0600);
 
     msg_key_POZ = generuj_klucz_ftok(".", 1);
     msg_id_POZ = alokujKolejkeKomunikatow(msg_key_POZ, IPC_CREAT | IPC_EXCL | 0600);
@@ -272,25 +279,6 @@ int main()
     waitpid(generator_lekarzy_pid, NULL, 0);
     waitpid(rejestracja_pid, NULL, 0);
 
-
-    for (int i = 0; i < 5; i++) {
-        if (lekarze_pid[i] > 0) {  // Sprawdzamy, czy PID jest prawidłowy
-            int status;
-            pid_t result = waitpid(lekarze_pid[i], &status, 0);
-            if (result == -1) {
-                // Błąd oczekiwania na proces (np. proces już zakończył działanie)
-                continue;
-            } else {
-                // Proces zakończył działanie
-                if (WIFEXITED(status)) {
-                    print("[Main]: Proces lekarza o PID %d zakończył się z kodem wyjścia %d\n", pacjenci_pid[i], WEXITSTATUS(status));
-                } else if (WIFSIGNALED(status)) {
-                    print("[Main]: Proces lekarza o PID %d został zakończony sygnałem %d\n", pacjenci_pid[i], WTERMSIG(status));
-                }
-            }
-        }
-    }
-
     // KONCZENIE PRACY PROGRAMU: KONCZENIE ZBEDNYCH PROCESOW I ZWALNIANIE ZASOBOW
     wyczyscProcesyPacjentow();
     int status;
@@ -300,6 +288,7 @@ int main()
     // Zakoncz wszystkie procesy pacjentow, ktore nie zdazyly sie zakonczyc, po zakonczeniu generatora pacjentow
     // i zakonczeniu rejestracji, aby nie prosily o nieistniejace juz zasoby
     zwolnijSemafor(klucz_wejscia);
+    zwolnijKolejkeKomunikatow(klucz_wyjscia);
     zwolnijKolejkeKomunikatow(msg_key_rej);
     zwolnijPamiecWspoldzielona(shm_key);
     zwolnijKolejkeKomunikatow(msg_key_POZ);

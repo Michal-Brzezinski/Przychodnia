@@ -39,6 +39,9 @@ int main(){
     key_t msg_key = generuj_klucz_ftok(".",'B');
     int msg_id = alokujKolejkeKomunikatow(msg_key,IPC_CREAT | 0600);
 
+    key_t klucz_wyjscia = generuj_klucz_ftok(".", 'W');
+    int msg_id_wyjscie = alokujKolejkeKomunikatow(klucz_wyjscia, IPC_CREAT | 0600);
+
 
     if(pacjent.wiek < 18){
 
@@ -84,8 +87,16 @@ int main(){
         exit(1);
     }
 
-    waitSemafor(sem_id, 1, 0);   // czeka az przyjdzie komunikat
-    if(valueSemafor(sem_id, 2)==0) signalSemafor(sem_id, 1);  
+        Wiadomosc msg1;
+    if (msgrcv(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), msg.id_pacjent, 0) == -1)
+    {
+        // Pacjent czeka na potwierdzenie, ze moze wyjsc
+        perror_red("[Pacjent]: Blad msgrcv\n");
+        exit(1);
+    }
+
+    // waitSemafor(sem_id, 1, 0);   // czeka az przyjdzie komunikat
+    // if(valueSemafor(sem_id, 2)==0) signalSemafor(sem_id, 1);  
     // oznajmia innym, ktorzy nie zdazyli przed zamknieciem, ze mozna wyjsc
     // jezeli valueSemafor(sem_id, 2)==0 to znaczy ze rejestracja juz zamknieta
 

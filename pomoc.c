@@ -1,4 +1,4 @@
-#include "MyLib/shm_utils.h"gcc
+#include "MyLib/shm_utils.h"
 #include <unistd.h>
 #include <sys/wait.h>
 #include <stdarg.h>
@@ -53,6 +53,8 @@ int main()
 
     // Wywołanie funkcji printRed z formatowaniem
     printRed("Podane wartosci to: 1: %d, 2: %d, 3: %d, 4: %d\n", pam[0], pam[1], pam[3], pam[4]);
+    int i = 1;
+    printf("i ma wartość : %c",(char)(i));
 
     return 0;
 }

@@ -16,6 +16,9 @@ key_t msg_key_rej;
 int sem_id; // id  i klucz do zbioru semaforow
 key_t sem_key;
 
+key_t klucz_wyjscia;
+int msg_id_wyjscie;
+
 int msg_id_1; // id 1. kolejki POZ
 int msg_id_2; // id 2. kolejki KARDIOLOGA
 int msg_id_3; // id 3. kolejki OKULISTY
@@ -51,6 +54,9 @@ int main(int argc, char *argv[])
     
     msg_key_rej = generuj_klucz_ftok(".", 'B');
     msg_id_rej = alokujKolejkeKomunikatow(msg_key_rej, IPC_CREAT | 0600);
+
+    klucz_wyjscia = generuj_klucz_ftok(".", 'W');
+    msg_id_wyjscie = alokujKolejkeKomunikatow(klucz_wyjscia, IPC_CREAT | 0600);
     
     sem_key = generuj_klucz_ftok(".", 'A');
     sem_id = alokujSemafor(sem_key, S, IPC_CREAT | 0600);
@@ -83,7 +89,8 @@ int main(int argc, char *argv[])
     
     int procent10 = procentNaNaturalna(limit_pacjentow, 10);
     // Limity pacjentow dla lekarzy specjalistow
-    for (int i = 1; i < 5; i++)
+    int i;
+    for (i = 1; i < 5; i++)
     {
         limity_lekarzy[i] = procent10;
     }
@@ -103,12 +110,12 @@ int main(int argc, char *argv[])
     
     // Godziny otwarcia i zamkniecia rejestracji (w sekundach od polnocy)
     int Tp = current_time;      // Aktualny czas
-    int Tk = current_time + 8; // Aktualny czas + x sekund
+    int Tk = current_time + 10; // Aktualny czas + x sekund
     
     pamiec_wspoldzielona = dolaczPamiecWspoldzielona(shm_id, 0);
     
     printGreen("[Rejestracja]: Rejestracja uruchomiona, oczekuje na pacjentow\n");
-    
+    Wiadomosc msg;
     while (1)
     {
         
@@ -127,7 +134,7 @@ int main(int argc, char *argv[])
         }
         
         // Czekaj na komunikat rejestracji
-        Wiadomosc msg;
+        
         if (msgrcv(msg_id_rej, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT) == -1)
         {
             // Sprawdzamy, czy nie bylo wiadomosci, ale nie blokujemy procesu dzieki IPC_NOWAIT
@@ -155,7 +162,14 @@ int main(int argc, char *argv[])
             case MEDYCYNA_PRACY: msg_id_pom = msg_id_5; break;
         }
         if((kolejka_size = policzProcesy(msg_id_pom))==-1){
-            signalSemafor(sem_id, 1);
+            Wiadomosc msg1 = msg;
+            msg1.mtype = msg.id_pacjent;
+            // Wyslij pacjenta do domu
+            if (msgsnd(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                perror_red("[Rejestracja - 1 okienko]: Blad msgsnd - pacjent do domu\n");
+                exit(1);
+            }
+            // signalSemafor(sem_id, 1);   // Informuj pacjenta, ze moze wyjsc z budynku
             signalSemafor(sem_id, 3);
             continue; 
         }
@@ -163,7 +177,14 @@ int main(int argc, char *argv[])
         if(limity_lekarzy[msg.id_lekarz-1]<=(licznik_pom+kolejka_size)){
             
             printYellow("[Rejestracja - 1 okienko]: Pacjent nr %d nie moze wejsc do lekarza o id %d - brak miejsc\n",msg.id_pacjent ,msg.id_lekarz);
-            signalSemafor(sem_id, 1);   // Informuj pacjenta, ze moze wyjsc z budynku
+            Wiadomosc msg1 = msg;
+            msg1.mtype = msg.id_pacjent;
+            // Wyslij pacjenta do domu
+            if (msgsnd(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                perror_red("[Rejestracja - 1 okienko]: Blad msgsnd - pacjent do domu\n");
+                exit(1);
+            }
+            // signalSemafor(sem_id, 1);   // Informuj pacjenta, ze moze wyjsc z budynku
             signalSemafor(sem_id, 3);   // pozwol innym dzialac na pamieci dzielonej
             continue;
             // obsluga braku miejsc do danego lekarza
@@ -171,10 +192,10 @@ int main(int argc, char *argv[])
         signalSemafor(sem_id, 3);   // pozwol innym dzialac na pamieci dzielonej
         
         printGreen("[Rejestracja - 1 okienko]: Zarejestrowano pacjenta nr %d do lekarza: %d\n", msg.id_pacjent, msg.id_lekarz);
-        msg.mtype = msg.vip; // ustalenie priorytetu przyjecua pacjenta
+        msg.mtype = msg.vip; // ustalenie priorytetu przyjecia pacjenta
         // Wyslij pacjenta do lekarza
         if (msgsnd(msg_id_pom, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-            perror_red("[Rejestracja - 1 okienko]: Blad msgsnd - pacjent\n");
+            perror_red("[Rejestracja - 1 okienko]: Blad msgsnd - pacjent do lekarza\n");
             exit(1);
         }
         
@@ -196,11 +217,13 @@ int main(int argc, char *argv[])
     }
     zatrzymajOkienkoNr2(); // Zatrzymaj okienko nr 2 przed zakonczeniem pracy
     //
-    printRed("[Rejestracja]: Zablokowano wejscie nowych pacjentow do budynku\n");
+    printYellow("[Rejestracja]: Zablokowano wejscie nowych pacjentow do budynku\n");
     inicjalizujSemafor(sem_id, 0, 0); // Zablokuj semafor wejscia do budynku
     waitSemafor(sem_id, 2, 0);        // Oznajmij zakonczenie rejestracji
-    signalSemafor(sem_id, 1);
-    wypiszPacjentowWKolejce(msg_id_rej, sem_id);
+    //signalSemafor(sem_id, 1);
+
+    int rozmiar_pozostalych = 0;
+    int *pidy_pozostalych = wypiszPacjentowWKolejce(msg_id_rej, sem_id, &rozmiar_pozostalych);
     
     printYellow("[Rejestracja]: Czekam na sygnal zakonczenia generowania pacjentow...\n");
     
@@ -208,7 +231,18 @@ int main(int argc, char *argv[])
     //wypiszPacjentowWKolejce(msg_id_rej, semID);
     printYellow("[Rejestracja]: Rejestracja zakonczyla dzialanie\n");
     
-    signalSemafor(sem_id,1); // oznajmia wyjscie tym, ktorzy nie zdazyli przed zamknieciem rejestracji
+    // wysylanie pozostalym pacjentom komunikatu o wyjsciu
+    Wiadomosc msg1 = msg;
+    for(i=0;i<rozmiar_pozostalych;i++){    
+        msg1.mtype = pidy_pozostalych[i];
+        // Wyslij pacjenta do domu
+        if (msgsnd(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+            perror_red("[Rejestracja]: Blad msgsnd - pacjent do domu\n");
+            exit(1);
+        }
+    }
+    free(pidy_pozostalych);
+    //signalSemafor(sem_id, 1); // oznajmia wyjscie tym, ktorzy nie zdazyli przed zamknieciem rejestracji
     
     return 0;
 }
@@ -235,7 +269,6 @@ void uruchomOkienkoNr2()
                     exit(1);
                 }
                 
-                //printRed("[Rejestracja]: Brak pacjentow w kolejce\n");
                 sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
                 continue;
             }
@@ -253,14 +286,30 @@ void uruchomOkienkoNr2()
                 case MEDYCYNA_PRACY: msg_id_pom = msg_id_5; break;
             }
             if((kolejka_size = policzProcesy(msg_id_pom))==-1){
-                signalSemafor(sem_id, 1);
+                Wiadomosc msg1 = msg;
+                msg1.mtype = msg.id_pacjent;
+                // Wyslij pacjenta do domu
+                if (msgsnd(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                    perror_red("[Rejestracja - 1 okienko]: Blad msgsnd - pacjent do domu\n");
+                    exit(1);
+                }
+                
+                // signalSemafor(sem_id, 1);
                 signalSemafor(sem_id, 3);
                 continue; 
             }
             if(limity_lekarzy[msg.id_lekarz-1]<=(licznik_pom+kolejka_size)){
                 
                 printYellow("[Rejestracja - 2 okienko]: Pacjent nr %d nie moze wejsc do lekarza o id %d - brak miejsc\n",msg.id_pacjent ,msg.id_lekarz);
-                signalSemafor(sem_id, 1);   // Informuj pacjenta, ze moze wyjsc z budynku
+                Wiadomosc msg1 = msg;
+                msg1.mtype = msg.id_pacjent;
+                // Wyslij pacjenta do domu
+                if (msgsnd(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                    perror_red("[Rejestracja - 1 okienko]: Blad msgsnd - pacjent do domu\n");
+                    exit(1);
+                }
+                
+                //signalSemafor(sem_id, 1);   // Informuj pacjenta, ze moze wyjsc z budynku
                 signalSemafor(sem_id, 3);   // pozwol innym dzialac na pamieci dzielonej
                 continue;
                 // obsluga braku miejsc do danego lekarza
@@ -271,7 +320,7 @@ void uruchomOkienkoNr2()
             msg.mtype = msg.vip;     // ustalenie priorytetu przyjecia pacjenta
             // Wyslij pacjenta do lekarza
             if (msgsnd(msg_id_pom, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-                perror_red("[Rejestracja - 2 okienko]: Blad msgsnd\n");
+                perror_red("[Rejestracja - 2 okienko]: Blad msgsnd pacjent do lekarza\n");
                 exit(1);
             }
             

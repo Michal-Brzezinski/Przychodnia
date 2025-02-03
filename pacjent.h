@@ -7,6 +7,7 @@
 #include <sys/msg.h>
 #include <errno.h>
 #include <signal.h>
+#include <string.h>
 #ifndef SA_RESTART
 #define SA_RESTART 0x10000000   
 #endif
@@ -32,7 +33,8 @@ typedef struct {
     int id_pacjent;   // Numer pacjenta
     int vip;          // Status VIP
     int wiek;         // Wiek pacjenta
-    int id_lekarz;    // Numer preferowanego lekarza  
+    int id_lekarz;    // Numer preferowanego lekarza 
+    char kto_skierowal[128]; // nazwa lekarza, ktory skierowal
 } Wiadomosc;
 //  struktura wiadomosci w rejestracji
 
@@ -65,4 +67,21 @@ void inicjalizujWiadomosc(Wiadomosc *msg, Pacjent *pacjent){
     msg->wiek = pacjent->wiek;
     msg->id_lekarz = pacjent->id_lekarz;
 
+    switch(pacjent->id_lekarz){
+        case 1:
+            strcpy(msg->kto_skierowal, "Lekarz POZ");
+            break;
+        case 2:
+            strcpy(msg->kto_skierowal, "Kardiolog");
+            break;
+        case 3:
+            strcpy(msg->kto_skierowal, "Okulista");
+            break;
+        case 4:
+            strcpy(msg->kto_skierowal, "Pediatra");
+            break;
+        case 5:
+            strcpy(msg->kto_skierowal, "Lekarz Medycyny Pracy");
+            break;
+    }
 }
