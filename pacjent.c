@@ -75,26 +75,26 @@ int main(){
 
 
     // Pacjent oczekuje na rejestracje
-    if(pacjent.wiek >= 18)
-    printBlue("[Pacjent]: Pacjent %d czeka na rejestracje w kolejce do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
-    else
-    printBlue("\033[1;34m[Pacjent]: Pacjent %d czeka z opiekunem na rejestracje w kolejce do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
+    if(valueSemafor(sem_id, 2) == 1){
+        if(pacjent.wiek >= 18)
+        printBlue("[Pacjent]: Pacjent %d czeka w kolejce na rejestracje do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
+        else
+        printBlue("\033[1;34m[Pacjent]: Pacjent %d czeka z opiekunem w kolejce na rejestracje do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
+            
+            // Wyslij wiadomosc do rejestracji
+        if (msgsnd(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+            perror_red("[Pacjent]: Blad msgsnd - pacjent\n");
+            exit(1);
+        }
 
-
-        // Wyslij wiadomosc do rejestracji
-    if (msgsnd(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-        perror_red("[Pacjent]: Blad msgsnd - pacjent\n");
-        exit(1);
+            Wiadomosc msg1;
+        if (msgrcv(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), msg.id_pacjent, 0) == -1)
+        {
+            // Pacjent czeka na potwierdzenie, ze moze wyjsc
+            perror_red("[Pacjent]: Blad msgrcv\n");
+            exit(1);
+        }
     }
-
-        Wiadomosc msg1;
-    if (msgrcv(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), msg.id_pacjent, 0) == -1)
-    {
-        // Pacjent czeka na potwierdzenie, ze moze wyjsc
-        perror_red("[Pacjent]: Blad msgrcv\n");
-        exit(1);
-    }
-
     // waitSemafor(sem_id, 1, 0);   // czeka az przyjdzie komunikat
     // if(valueSemafor(sem_id, 2)==0) signalSemafor(sem_id, 1);  
     // oznajmia innym, ktorzy nie zdazyli przed zamknieciem, ze mozna wyjsc

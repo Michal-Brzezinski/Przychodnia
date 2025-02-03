@@ -31,7 +31,7 @@ GENEROWANIA PROCESÓW POTOMNYCH - LEKARZY, PACJENTÓW I REJESTRACJI
 #include "MyLib/shm_utils.h"
 
 #define S 5             // ilosc semaforow w zbiorze - w razie potrzeby zwiekszyc
-#define BUILDING_MAX 7  // maksymalna pojemnosc pacjentow w budynku
+#define BUILDING_MAX 8  // maksymalna pojemnosc pacjentow w budynku
 #define MAX_GENERATE 100 // maksymalna liczba procesow pacjentow do wygenerowania
 #define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej
 // struktura pamieci wspoldzielonej
@@ -259,7 +259,7 @@ int main()
         // while (waitpid(-1, NULL, WNOHANG) > 0);
         // prawdza, czy jakikolwiek proces potomny zakonczyl sie, ale nie blokuje,
         // jesli zaden proces nie jest gotowy do zakonczenia - flaga WNOHANG
-        sleep(1); // Opoznienien w generowaniu kolejnych pacjentow
+        usleep(500000); // opzoznienie w generowaniu nowych pacjentow
     }
     while (waitpid(-1, NULL, WNOHANG) > 0);
     keep_generating = 0;

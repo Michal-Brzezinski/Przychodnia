@@ -37,6 +37,12 @@ int msg_id_pom;     // pomocnicza zmienna do przechowywania id danej kolejki kom
 
 int limity_lekarzy[5] = {0}; // Tablica przechowujaca limity pacjentow dla lekarzy
 
+// zmienne do operacji na czasie
+int Tp, Tk; // czas poczatkowy i czas koncowy
+// czas dzialania rejestracji
+
+// funkcje potrzebne do obslugi rejestracji
+
 void uruchomOkienkoNr2();
 
 void zatrzymajOkienkoNr2();
@@ -109,8 +115,8 @@ int main(int argc, char *argv[])
     int current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
     
     // Godziny otwarcia i zamkniecia rejestracji (w sekundach od polnocy)
-    int Tp = current_time;      // Aktualny czas
-    int Tk = current_time + 10; // Aktualny czas + x sekund
+    Tp = current_time;      // Aktualny czas
+    Tk = current_time + 20; // Aktualny czas + x sekund
     
     pamiec_wspoldzielona = dolaczPamiecWspoldzielona(shm_id, 0);
     
@@ -129,7 +135,7 @@ int main(int argc, char *argv[])
         // Sprawdz, czy aktualny czas jest poza godzinami otwarcia
         if (current_time < Tp || current_time > Tk)
         {
-            printYellow("[Rejestracja]: Przychodnia jest zamknieta. Konczenie pracy.\n");
+            printYellow("[Rejestracja - 1 okienko]: Przychodnia jest zamknieta. Konczenie pracy.\n");
             break; // Wyjscie z petli, gdy czas jest poza godzinami otwarcia
         }
         
@@ -149,7 +155,6 @@ int main(int argc, char *argv[])
             continue;
         }
         
-        printGreen("[Rejestracja]: Otrzymano wiadomosc od pacjenta nr %d, ktory chce isc do lekarza nr %d\n", msg.id_pacjent, msg.id_lekarz);
         // Pobieranie informacji o kolejce komunikatow
         waitSemafor(sem_id, 3, 0); // dostep do pamieci dzielonej jednoczesnie uniemozliwiajac zapis do niej
         licznik_pom = pamiec_wspoldzielona[msg.id_lekarz];
@@ -201,6 +206,7 @@ int main(int argc, char *argv[])
         
         // Sprawdz liczbe procesow oczekujacych na rejestracje ponownie
         int liczba_procesow = policzProcesy(msg_id_rej);
+        printRed("Liczba oczekujacych w kolejce wynosi:\t%d\n", liczba_procesow);
         if ((liczba_procesow > BUILDING_MAX / 2) && (pid_okienka2 < 0)) // jezeli PID < 0 to znaczy ze okno2 jeszcze nie dziala
         {
             // Uruchomienie okienka nr 2
@@ -235,6 +241,7 @@ int main(int argc, char *argv[])
     Wiadomosc msg1 = msg;
     for(i=0;i<rozmiar_pozostalych;i++){    
         msg1.mtype = pidy_pozostalych[i];
+        msg1.id_pacjent = pidy_pozostalych[i];
         // Wyslij pacjenta do domu
         if (msgsnd(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
             perror_red("[Rejestracja]: Blad msgsnd - pacjent do domu\n");
@@ -255,8 +262,30 @@ void uruchomOkienkoNr2()
     {
         // Dziecko: Okienko nr 2
         printGreen("[Rejestracja - 2 okienko]: Otworzenie okienka ...\n");
+        
+        // Zmienne aktualnego czasu
+        time_t now;
+        struct tm *local;
+        int current_time;
+        
         while (1)
         {
+
+            // Sprawdz aktualny czas
+            now = time(NULL);
+            local = localtime(&now);
+            current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
+            
+            //printf("\033[35mCzas: %02d:%02d:%02d\033[0m\n", local->tm_hour, local->tm_min, local->tm_sec);
+            
+            // Sprawdz, czy aktualny czas jest poza godzinami otwarcia
+            if (current_time < Tp || current_time > Tk)
+            {
+                printYellow("[Rejestracja - 2 okienko]: Przychodnia jest zamknieta. Konczenie pracy.\n");
+                break; // Wyjscie z petli, gdy czas jest poza godzinami otwarcia
+            }
+
+
             // Czekaj na komunikat rejestracji
             Wiadomosc msg;
             if (msgrcv(msg_id_rej, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT) == -1)
@@ -273,7 +302,6 @@ void uruchomOkienkoNr2()
                 continue;
             }
             
-            printGreen("[Rejestracja]: Otrzymano wiadomosc od pacjenta nr %d, ktory chce isc do lekarza nr %d\n", msg.id_pacjent, msg.id_lekarz);
             // Pobieranie informacji o kolejce komunikatow
             waitSemafor(sem_id, 3, 0); // dostep do pamieci dzielonej jednoczesnie uniemozliwiajac zapis do niej
             licznik_pom = pamiec_wspoldzielona[msg.id_lekarz];

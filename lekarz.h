@@ -112,6 +112,13 @@ int *wypiszPacjentowWKolejce(int msg_id, int sem_id, int *rozmiar_kolejki, Lekar
     Wiadomosc msg;
     int *pacjenci_po_zamknieciu_pid;
     int rozmiar = policzProcesy(msg_id);
+    
+    if (rozmiar == 0) {
+        // W RAZIE PUSTEJ KOLEJKI NA KONIEC NIE ROB NIC
+        *rozmiar_kolejki = 0;
+        return NULL;
+    }
+
     *rozmiar_kolejki = rozmiar; // dzieki wskaznikowi mozna przeniesc rozmiar kolejki poza funkcje 
     pacjenci_po_zamknieciu_pid = (int *)(malloc(rozmiar * sizeof(int)));
     if(pacjenci_po_zamknieciu_pid == NULL)
@@ -119,10 +126,11 @@ int *wypiszPacjentowWKolejce(int msg_id, int sem_id, int *rozmiar_kolejki, Lekar
         perror_red("[wypiszPacjentowWKolejce]: malloc error\n");
         exit(1);
     }
-    printf("Pacjenci ktorzy zostali przyjeci przez %s po zamknieciu:\n", lekarz->nazwa);
+    
+    printMagenta("[%s]: Po zamknieciu przychodni obsluzono pacjentow:\n", lekarz->nazwa);
     int i=0; // zmienna do iteracji
     while (msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT) != -1) {
-        printf("Pacjent nr %d, wiek: %d, vip: %d\n", msg.id_pacjent, msg.wiek, msg.vip);
+        print("[%s]: Pacjent nr %d, wiek: %d, vip: %d\n",lekarz->nazwa, msg.id_pacjent, msg.wiek, msg.vip);
         pacjenci_po_zamknieciu_pid[i]=msg.id_pacjent;
         i++;
     }

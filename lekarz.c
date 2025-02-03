@@ -125,7 +125,7 @@ void czynnosci_lekarskie(Lekarz *lekarz){
 
     // Godziny otwarcia i zamkniecia rejestracji (w sekundach od polnocy)
     int Tp = current_time;      // Aktualny czas
-    int Tk = current_time + 10; // Aktualny czas + x sekund 
+    int Tk = current_time + 20; // Aktualny czas + x sekund 
 
     
     // Glowna petla dzialania lekarza
@@ -149,14 +149,17 @@ void czynnosci_lekarskie(Lekarz *lekarz){
             for(i=0;i<rozmiar_pozostalych;i++){    
                 Wiadomosc msg1 = msg;
                 msg1.mtype = pidy_pozostalych[i];
+                msg1.id_pacjent = pidy_pozostalych[i];
                 // Wyslij pacjenta do domu
                 if (msgsnd(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
                     perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
-                    exit(1);
+                    continue;
                 }
             }
-            free(pidy_pozostalych);
-            
+            if (pidy_pozostalych != NULL) {
+                free(pidy_pozostalych);
+            }
+
             break; // Wyjscie z petli, gdy czas jest poza godzinami otwarcia
         }
         waitSemafor(sem_id,3,0);
@@ -210,7 +213,7 @@ void czynnosci_lekarskie(Lekarz *lekarz){
                 continue;
             }
 
-            sleep(2); // symulacja pracy lekarza
+            sleep(5); // symulacja pracy lekarza
             
             // Informuj pacjenta, ze moze wyjsc z budynku
             Wiadomosc msg1 = msg;
@@ -266,7 +269,7 @@ void badania_ambulatoryjne(Wiadomosc *msg, Lekarz *lekarz){
         exit(1);
     }
 
-    printMagenta("[Badania amb.]: pacjent nr %d wyszedl z badan\n", msg->id_pacjent);
+    printMagenta("[Badania amb.]: pacjent nr %d skonczyl badania\n", msg->id_pacjent);
 }
 
 void obsluga_SIGINT(int sig) {
