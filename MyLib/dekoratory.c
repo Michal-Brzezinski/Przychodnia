@@ -18,14 +18,14 @@ int losuj_int(int N) {
     return losowy;
 }
 
-int procentNaNaturalna(int n, int x) {
-    /*Funckcja oblicza x% liczby n, zwracajac wynik jako liczbe calkowita*/
-    double procent = (double)x / 100.0; // Konwersja procentow na ulamek
-    double s = floor(n * procent); 
-    // Obliczenie x% liczby n i zaokraglenie do najnizszej liczby calkowitej
-    // To gwarantuje nie wyjsc poza zakres podany w argumencie funkcji
-    return (int)s; // Zwrocenie jako liczba calkowita
-}
+// int procentNaNaturalna(int n, int x) {
+//     /*Funckcja oblicza x% liczby n, zwracajac wynik jako liczbe calkowita*/
+//     double procent = (double)x / 100.0; // Konwersja procentow na ulamek
+//     double s = floor(n * procent); 
+//     // Obliczenie x% liczby n i zaokraglenie do najnizszej liczby calkowitej
+//     // To gwarantuje nie wyjsc poza zakres podany w argumencie funkcji
+//     return (int)s; // Zwrocenie jako liczba calkowita
+// }
 
 key_t generuj_klucz_ftok(const char *sciezka, char projek_id) { 
     /* Sprawdza czy zaistnial blad, jezeli tak to konczy proces z kodem 1 */
@@ -194,4 +194,49 @@ system("killall pacjent");
 
 void usunNiepotrzebnePliki(){
 system("bash czystka.sh");
+}
+
+void zwrocTabliceLimitowLekarzy(int limit_pacjentow, int *limity_lekarzy){
+//  Funkcja przydzielajaca dana liczbe pacjentow pomiedzy lekarzy
+//  Zwraca wskaznik do tablicy limitow:
+//  - limity_lekarzy[0] - limit pacjentow dla lekarza 1
+//  - limity_lekarzy[1] - limit pacjentow dla lekarza 2
+//  - limity_lekarzy[2] - limit pacjentow dla lekarza 3
+//  - limity_lekarzy[3] - limit pacjentow dla lekarza 4
+//  - limity_lekarzy[4] - limit pacjentow dla lekarza 5
+
+    // Deklaracja tablic i zmiennych
+    double procenty[5] = {60.0, 10.0, 10.0, 10.0, 10.0};
+    double limity_lekarzy_double[5];
+    double reszty[5];
+    int suma_limity = 0;
+    int i;
+
+    // Oblicz dokladne limity jako liczby zmiennoprzecinkowe
+    for (i = 0; i < 5; i++) {
+        limity_lekarzy_double[i] = (limit_pacjentow * procenty[i]) / 100.0;
+        limity_lekarzy[i] = (int)limity_lekarzy_double[i]; // Czesc calkowita
+        reszty[i] = limity_lekarzy_double[i] - limity_lekarzy[i]; // Reszta
+        suma_limity += limity_lekarzy[i];   // suma calkowita obliczonych limitow
+    }
+
+    // Oblicz pozostalych pacjentow do przydzielenia
+    int pozostalo_pacjentow = limit_pacjentow - suma_limity;
+
+    // Przydziel pozostalych pacjentow na podstawie najwiekszych reszt
+    while (pozostalo_pacjentow > 0) {
+        // Znajdz lekarza z najwieksza reszta i przydziel mu pacjenta
+        int max_index = 0;
+        for (i = 1; i < 5; i++) {
+            if (reszty[i] > reszty[max_index]) {
+                max_index = i;
+            }
+        }
+        // Przydziel jednego pacjenta temu lekarzowi
+        limity_lekarzy[max_index]++;
+        reszty[max_index] = 0; // Zresetuj reszte, aby zapobiec ponownej selekcji
+        pozostalo_pacjentow--;
+    }
+
+    return;
 }

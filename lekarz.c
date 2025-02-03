@@ -13,7 +13,8 @@ key_t klucz_pamieci, klucz_sem, klucz_kolejki_lekarza, klucz_kolejki_rejestracji
 key_t klucz_wyjscia;
 int msg_id_wyjscie;
 
-int pomocniczy_limit_POZ; // globalne do ulatwienia dzialania programu 
+int limit_POZ2; // globalne do ulatwienia dzialania programu
+int limity_lekarzy[5];
 
 void *lekarzPOZ2(void* _arg);
 void obsluga_SIGINT(int sig);
@@ -27,6 +28,7 @@ int main(int argc, char *argv[])
     }
     int id_lekarz = atoi(argv[1]);
     int limit_pacjentow = atoi(argv[2]);
+    zwrocTabliceLimitowLekarzy(limit_pacjentow, limity_lekarzy);
 
     //____________________   INICJALIZACJA LEKARZA   ______________________
     Lekarz lekarz;
@@ -34,19 +36,19 @@ int main(int argc, char *argv[])
     int limit_indywidualny = 0;
     switch(id_lekarz){
         case POZ:
-            limit_indywidualny = procentNaNaturalna(limit_pacjentow, 60);
+            limit_indywidualny = limity_lekarzy[0];
             break;
         case KARDIOLOG:
-            limit_indywidualny = procentNaNaturalna(limit_pacjentow, 10);
+            limit_indywidualny = limity_lekarzy[1];
             break;
         case OKULISTA:
-            limit_indywidualny = procentNaNaturalna(limit_pacjentow, 10);
+            limit_indywidualny = limity_lekarzy[2];
             break;
         case PEDIATRA:
-            limit_indywidualny = procentNaNaturalna(limit_pacjentow, 10);
+            limit_indywidualny = limity_lekarzy[3];
             break;
         case MEDYCYNA_PRACY:
-            limit_indywidualny = procentNaNaturalna(limit_pacjentow, 10);
+            limit_indywidualny = limity_lekarzy[4];
             break;
         default:
             break;
@@ -88,8 +90,8 @@ int main(int argc, char *argv[])
 
     //  ___________________________ OBSLUGA WATKU POZ2 ___________________________
     if (lekarz.id_lekarz==1){
-        pomocniczy_limit_POZ = lekarz.indywidualny_limit/2;
-        lekarz.indywidualny_limit -= pomocniczy_limit_POZ;
+        limit_POZ2 = lekarz.indywidualny_limit/2;
+        lekarz.indywidualny_limit -= limit_POZ2;
 
         Lekarz lekarz2 = lekarz;
         //strcpy(lekarz2.nazwa, "POZ2");
@@ -99,7 +101,7 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
-        printMagenta("[Lekarz]: Wygenerowano 2 lekarzy: %s o id: %d, limity pacjentow: %d, %d\n", lekarz.nazwa, lekarz.id_lekarz, lekarz.indywidualny_limit, pomocniczy_limit_POZ);
+        printMagenta("[Lekarz]: Wygenerowano 2 lekarzy: %s o id: %d, limity pacjentow: %d, %d\n", lekarz.nazwa, lekarz.id_lekarz, lekarz.indywidualny_limit, limit_POZ2);
         }
     else printMagenta("[Lekarz]: Wygenerowano lekarza: %s o id: %d, limit pacjentow: %d\n", lekarz.nazwa, lekarz.id_lekarz, lekarz.indywidualny_limit);
     // ________________________________________________________________________________________________________
@@ -239,7 +241,7 @@ void *lekarzPOZ2(void *_arg) {
     Lekarz *lekarz= (Lekarz *) _arg;
     strncpy(lekarz->nazwa, "POZ2", sizeof(lekarz->nazwa) - 1); // Kopiowanie nazwy
     printMagenta("[%s]: Lekarz rozpoczal dzialanie\n",lekarz->nazwa);
-    lekarz->indywidualny_limit = pomocniczy_limit_POZ; // tutaj sie przydaje ta zmienna globalna
+    lekarz->indywidualny_limit = limit_POZ2; // tutaj sie przydaje ta zmienna globalna
     czynnosci_lekarskie(lekarz); 
     return NULL;
 }

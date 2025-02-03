@@ -35,7 +35,7 @@ int licznik_pom;    // pomocniczna zmienna do przechowywania licznika danego lek
 int kolejka_size;   // pomocniczna zmienna do przechowywania rozmiary kolejki
 int msg_id_pom;     // pomocnicza zmienna do przechowywania id danej kolejki komunikatow
 
-int limity_lekarzy[5] = {0}; // Tablica przechowujaca limity pacjentow dla lekarzy
+int limity_lekarzy[5]; // Wskaznik do tablicy przechowujacej limity pacjentow dla lekarzy
 
 // zmienne do operacji na czasie
 int Tp, Tk; // czas poczatkowy i czas koncowy
@@ -90,16 +90,7 @@ int main(int argc, char *argv[])
     printGreen("[Rejestracja]: Uruchomiono rejestracje\n");
     
     int limit_pacjentow = atoi(argv[1]);
-    limity_lekarzy[0] = procentNaNaturalna(limit_pacjentow, 60); 
-    // Limit pacjentow dla lekarza POZ
-    
-    int procent10 = procentNaNaturalna(limit_pacjentow, 10);
-    // Limity pacjentow dla lekarzy specjalistow
-    int i;
-    for (i = 1; i < 5; i++)
-    {
-        limity_lekarzy[i] = procent10;
-    }
+    zwrocTabliceLimitowLekarzy(limit_pacjentow, limity_lekarzy);
     
     printMagenta("Odczytane limity lekarzy to:\n");
     printMagenta("WSZYSCY: \t%d\n", limit_pacjentow);
@@ -224,7 +215,7 @@ int main(int argc, char *argv[])
     zatrzymajOkienkoNr2(); // Zatrzymaj okienko nr 2 przed zakonczeniem pracy
     //
     printYellow("[Rejestracja]: Zablokowano wejscie nowych pacjentow do budynku\n");
-    inicjalizujSemafor(sem_id, 0, 0); // Zablokuj semafor wejscia do budynku
+    if(valueSemafor(sem_id, 0)!=0)  (sem_id, 0, 0); // Zablokuj semafor wejscia do budynku
     waitSemafor(sem_id, 2, 0);        // Oznajmij zakonczenie rejestracji
     //signalSemafor(sem_id, 1);
 
@@ -239,6 +230,7 @@ int main(int argc, char *argv[])
     
     // wysylanie pozostalym pacjentom komunikatu o wyjsciu
     Wiadomosc msg1 = msg;
+    int i;
     for(i=0;i<rozmiar_pozostalych;i++){    
         msg1.mtype = pidy_pozostalych[i];
         msg1.id_pacjent = pidy_pozostalych[i];
