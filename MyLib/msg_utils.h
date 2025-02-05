@@ -6,7 +6,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "dekoratory.h"
+
 int alokujKolejkeKomunikatow(key_t klucz, int flagi);
 int zwolnijKolejkeKomunikatow(key_t  klucz);
-//int wyslijKomunikat(int msg_id, const void *wskaznik_msg, size_t rozmiar_msg, int flagi);
-//ssize_t odbierzKomunikat(int msg_id, void *wskaznik_msg, size_t rozmiar_msg, long typ_msg,int flagi);
+int policzProcesy(int msg_id);

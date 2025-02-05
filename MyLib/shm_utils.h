@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#include "dekoratory.h"
+
 int alokujPamiecWspoldzielona(key_t klucz, int rozmiar, int flagi);
 int *dolaczPamiecWspoldzielona(int shmID, int flagi);
 int odlaczPamiecWspoldzielona(int *pamiec);

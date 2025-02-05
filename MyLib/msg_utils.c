@@ -5,7 +5,7 @@ int alokujKolejkeKomunikatow(key_t klucz, int flagi){
    int msgID;
    if ( (msgID = msgget(klucz, flagi)) == -1)
    {
-      perror("Blad msgget (alokujKolejkeKomunikatow): ");
+      perror_red("Blad msgget (alokujKolejkeKomunikatow): ");
       exit(1);
    }
 
@@ -22,14 +22,14 @@ int zwolnijKolejkeKomunikatow(key_t klucz) {
         if (errno == ENOENT) {
             return 0; // Kolejka nie istnieje
         } else {
-            perror("msgget failed");
+            perror_red("msgget failed");
             exit(1);
         }
     }
 
     // Kolejka komunikatow istnieje, wiec probujemy ja usunac
     if (msgctl(msgid, IPC_RMID, NULL) == -1) {
-        perror("Blad msgctl (zwolnijKolejkeKomunikatow)");
+        perror_red("Blad msgctl (zwolnijKolejkeKomunikatow)");
         exit(1);
     }
 
@@ -37,24 +37,16 @@ int zwolnijKolejkeKomunikatow(key_t klucz) {
 
 }
 
-/*
-int wyslijKomunikat(int msg_id, const void *wskaznik_msg, size_t rozmiar_msg, int flagi){
-
-    if (msgsnd(msg_id, &wskaznik_msg, rozmiar_msg, 0) == -1) {
-        perror("Blad msgsnd - wyslijKomunikat");
-        exit(1);
+// Funkcja pomocnicza do obliczania liczby procesow w kolejce
+int policzProcesy(int msg_id) {
+    /* Zlicz liczbe komunikatow w kolejce (w prostym przypadku nieopoznionym) */
+    
+    int liczba_procesow = 0;
+    struct msqid_ds buf;
+    if (msgctl(msg_id, IPC_STAT, &buf) == -1) {
+        perror_red("[policzProcesy]: msgctl IPC_STAT\n");
+        return -1;
     }
-    return 0;
+    liczba_procesow = buf.msg_qnum;
+    return liczba_procesow;
 }
-
-ssize_t odbierzKomunikat(int msg_id, void *wskaznik_msg, size_t rozmiar_msg, long typ_msg,int flagi){
-
-    ssize_t odbior = msgrcv(msg_id, wskaznik_msg, rozmiar_msg, typ_msg, flagi);
-        
-    if (odbior == -1) {
-        perror("Blad msgrcv - odbierzKomunikat");
-        exit(1);
-    }
-
-    return odbior;
-}*/
