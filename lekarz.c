@@ -1,23 +1,5 @@
 #include "lekarz.h"
 
-pthread_t POZ2;
-
-int* pamiec_wspoldzielona; // Wskaznik do pamieci wspoldzielonej
-// pamiec_wspoldzielona[0] - wspolny licznik pacjentow
-
-volatile int zakoncz_program = 0;
-
-int shm_id, sem_id, msg_id_lekarz, msg_id_rejestracja;
-key_t klucz_pamieci, klucz_sem, klucz_kolejki_lekarza, klucz_kolejki_rejestracji;
-
-key_t klucz_wyjscia;
-int msg_id_wyjscie;
-
-int limit_POZ2; // globalne do ulatwienia dzialania programu
-int limity_lekarzy[5];
-
-void *lekarzPOZ2(void* _arg);
-void obsluga_SIGINT(int sig);
 
 int main(int argc, char *argv[])
 {
@@ -57,13 +39,6 @@ int main(int argc, char *argv[])
 
     //  ____________________   INICJALIZACJA  ZASOBOW IPC   _____________________
 
-    klucz_pamieci = generuj_klucz_ftok(".", 'X');
-    shm_id = alokujPamiecWspoldzielona(klucz_pamieci, PAM_SIZE * sizeof(int), IPC_CREAT | 0600);
-    pamiec_wspoldzielona = dolaczPamiecWspoldzielona(shm_id, 0); // dolaczenie pamieci wspoldzielonej
-
-    klucz_sem = generuj_klucz_ftok(".", 'A');
-    sem_id = alokujSemafor(klucz_sem, S, IPC_CREAT | 0600);
-
     if(lekarz.id_lekarz == 1){
         // tylko lekarze POZ potrzebuja dostepu do rejestracji w razie potrzeby skierowania do specjalisty
         klucz_kolejki_rejestracji = generuj_klucz_ftok(".", 'B');
@@ -94,8 +69,7 @@ int main(int argc, char *argv[])
         lekarz.indywidualny_limit -= limit_POZ2;
 
         Lekarz lekarz2 = lekarz;
-        //strcpy(lekarz2.nazwa, "POZ2");
-        int utworz_drugiegoPOZ=pthread_create(&POZ2,NULL,lekarzPOZ2,(void*)&lekarz2);
+        int utworz_drugiegoPOZ = pthread_create(&POZ2,NULL,lekarzPOZ2,(void*)&lekarz2);
         if (utworz_drugiegoPOZ==-1) {
             perror_red("[Lekarz]: Blad pthread_create - tworzenie drugiego lekarza POZ\n");
             exit(1);
@@ -106,12 +80,12 @@ int main(int argc, char *argv[])
     else printMagenta("[Lekarz]: Wygenerowano lekarza: %s o id: %d, limit pacjentow: %d\n", lekarz.nazwa, lekarz.id_lekarz, lekarz.indywidualny_limit);
     // ________________________________________________________________________________________________________
 
-    if(lekarz.id_lekarz==1)sprintf(lekarz.nazwa, "POZ1");
+    if(lekarz.id_lekarz==1) sprintf(lekarz.nazwa, "POZ1");
     czynnosci_lekarskie(&lekarz);   // symulacja pracy lekarza
 
     if (lekarz.id_lekarz == 1) {
     pthread_join(POZ2, NULL);  // Upewniamy sie, ze drugi lekarz POZ zakonczyl prace
-}
+    }
     return 0;
 }
 
@@ -127,7 +101,7 @@ void czynnosci_lekarskie(Lekarz *lekarz){
 
     // Godziny otwarcia i zamkniecia rejestracji (w sekundach od polnocy)
     int Tp = current_time;      // Aktualny czas
-    int Tk = current_time + 20; // Aktualny czas + x sekund 
+    int Tk = current_time + 50; // Aktualny czas + x sekund 
 
     
     // Glowna petla dzialania lekarza
@@ -138,39 +112,16 @@ void czynnosci_lekarskie(Lekarz *lekarz){
         now = time(NULL);
         local = localtime(&now);
         current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
+        
         // Sprawdz, czy aktualny czas jest poza godzinami otwarcia
         if (current_time < Tp || current_time > Tk)
         {
             printMagenta("[%s]: Przychodnia jest zamknieta. Lekarz o id: %d konczy prace.\n", lekarz->nazwa, lekarz->id_lekarz);
             
-            int rozmiar_pozostalych = 0;
-            int *pidy_pozostalych = wypiszPacjentowWKolejce(msg_id_lekarz, sem_id, &rozmiar_pozostalych, lekarz);
-            int i; // zmienna iteracyjna
-
-            // wysylanie pozostalym pacjentom komunikatu o wyjsciu
-            for(i=0;i<rozmiar_pozostalych;i++){    
-                Wiadomosc msg1 = msg;
-                msg1.mtype = pidy_pozostalych[i];
-                msg1.id_pacjent = pidy_pozostalych[i];
-                // Wyslij pacjenta do domu
-                if (msgsnd(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-                    perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
-                    continue;
-                }
-            }
-            if (pidy_pozostalych != NULL) {
-                free(pidy_pozostalych);
-            }
+            wypiszIOdeslijPacjentow(lekarz, msg_id_lekarz);
 
             break; // Wyjscie z petli, gdy czas jest poza godzinami otwarcia
         }
-        waitSemafor(sem_id,3,0);
-        if((lekarz->indywidualny_limit)==(lekarz->licznik_pacjentow)){
-            signalSemafor(sem_id,3);
-            printMagenta("[%s]: Lekarz o id %d osiagnal limit pacjentow i konczy prace\n", lekarz->nazwa, lekarz->id_lekarz);
-            break;
-        }
-        signalSemafor(sem_id,3);
 
         if (msgrcv(msg_id_lekarz, &msg, sizeof(Wiadomosc) - sizeof(long), -2, IPC_NOWAIT) == -1)        {
          // Odbieranie komunikatow o pacjentach w kolejnosci: 0,1,2
@@ -187,17 +138,22 @@ void czynnosci_lekarskie(Lekarz *lekarz){
         }
         else{
             // Gdy zostanie odczytany komunikat wykonaj czynnosci:
-            waitSemafor(sem_id,3,0);
+
             printMagenta("[%s]: Lekarz o id %d przyjal pacjenta %d o priorytecie: %d\n",lekarz->nazwa, lekarz->id_lekarz, msg.id_pacjent, msg.vip);
             lekarz->licznik_pacjentow++;
-            pamiec_wspoldzielona[lekarz->id_lekarz] = lekarz->licznik_pacjentow;
-            ++pamiec_wspoldzielona[0];  // zwieksza wspolny licznik
-            signalSemafor(sem_id,3);
             if(lekarz->licznik_pacjentow >= lekarz->indywidualny_limit){
                 printMagenta("[%s]: Lekarz o id %d osiagnal limit pacjentow i konczy prace\n", lekarz->nazwa, lekarz->id_lekarz);
-                sleep(2); // symulacja pracy lekarza
+
+                msg.mtype = msg.id_pacjent;
+                // Wyslij pacjenta do domu
+                if (msgsnd(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                    perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
+                    exit(1);
+                }
+
                 break;
             }
+            
             int czy_dodatkowe_badania = losuj_int(100);
             
             // obsluga wysylania na dodatkowe badania/do specjalisty
@@ -212,10 +168,11 @@ void czynnosci_lekarskie(Lekarz *lekarz){
                         
                 badania_ambulatoryjne(&msg, lekarz);
                 fflush(stdout);
+                --lekarz->licznik_pacjentow;
+                // zmniejszam licznik pacjentow, bo dzieki temu pacjent, ktory
+                // wroci z badan ambulatoryjnych nie bedzie liczony x2
                 continue;
             }
-
-            sleep(5); // symulacja pracy lekarza
             
             // Informuj pacjenta, ze moze wyjsc z budynku
             Wiadomosc msg1 = msg;
@@ -226,7 +183,6 @@ void czynnosci_lekarskie(Lekarz *lekarz){
                 exit(1);
             }
             
-            // signalSemafor(sem_id, 1);
         }
 
     }

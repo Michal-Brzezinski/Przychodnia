@@ -18,15 +18,6 @@ int losuj_int(int N) {
     return losowy;
 }
 
-// int procentNaNaturalna(int n, int x) {
-//     /*Funckcja oblicza x% liczby n, zwracajac wynik jako liczbe calkowita*/
-//     double procent = (double)x / 100.0; // Konwersja procentow na ulamek
-//     double s = floor(n * procent); 
-//     // Obliczenie x% liczby n i zaokraglenie do najnizszej liczby calkowitej
-//     // To gwarantuje nie wyjsc poza zakres podany w argumencie funkcji
-//     return (int)s; // Zwrocenie jako liczba calkowita
-// }
-
 key_t generuj_klucz_ftok(const char *sciezka, char projek_id) { 
     /* Sprawdza czy zaistnial blad, jezeli tak to konczy proces z kodem 1 */
     /* Jezeli nie, to zwraca wartosc wygenerowanego klucza */
@@ -165,18 +156,6 @@ void perror_red(const char *s) {
     // Resetujemy kolor
     printf("%s", reset);
     fflush(stdout);
-}
-
-void oczekujNaProces(pid_t pid, const char *nazwa_procesu) {
-    
-    int status;
-    waitpid(pid, &status, 0);
-
-    if (WIFEXITED(status))
-        print("[Main]: Proces %s zakonczony z kodem %d.\n", nazwa_procesu, WEXITSTATUS(status));
-    else
-        print("[Main]: Proces %s zakonczony niepowodzeniem.\n", nazwa_procesu);
-
 }
 
 void czekaj_na_procesy(pid_t *pid_array, int size) {

@@ -30,12 +30,12 @@ GENEROWANIA PROCESÓW POTOMNYCH - LEKARZY, PACJENTÓW I REJESTRACJI
 #include "MyLib/dekoratory.h"
 #include "MyLib/shm_utils.h"
 
-#define S 5             // ilosc semaforow w zbiorze - w razie potrzeby zwiekszyc
+#define S 7             // ilosc semaforow w zbiorze - w razie potrzeby zwiekszyc
 #define BUILDING_MAX 8  // maksymalna pojemnosc pacjentow w budynku
-#define MAX_GENERATE 100 // maksymalna liczba procesow pacjentow do wygenerowania
+#define MAX_GENERATE 200 // maksymalna liczba procesow pacjentow do wygenerowania
 #define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej
 // struktura pamieci wspoldzielonej
-// pamiec_wspoldzielona[0] - wspolny licznik pacjentow
+// pamiec_wspoldzielona[0] - wspolny licznik pacjentow DLA REJESTRACJI
 // pamiec_wspoldzielona[1-5] - limity pacjentow dla lekarzy
 // pamiec_wspoldzielona[6] - licznik procesow, ktore zapisaly do pamieci dzielonej
 
@@ -70,8 +70,7 @@ key_t msg_key_MP;     // klucz do kolejki do LEKARZA MEDYCYNY PRACY
 void handle_sigchld(int sig)
 {
     // Obsluga zakonczenia procesow potomnych
-    while (waitpid(-1, NULL, WNOHANG) > 0)
-        ;
+    while (waitpid(-1, NULL, WNOHANG) > 0);
 }
 
 void handle_sigint(int sig)
@@ -142,10 +141,14 @@ int main()
 
     inicjalizujSemafor(sem_id, 0, BUILDING_MAX);                           // semafor zainicjalizowany na maksymalna liczbe pacjentow w budynku
     inicjalizujSemafor(sem_id, 1, 0);                                      // potrzebny, aby proces pacjenta czekal na potwierdzenie przyjecia
-    inicjalizujSemafor(sem_id, 2, 1);                                      // semafor mowiacy, ze rejestracja jest zamknieta
-    inicjalizujSemafor(sem_id, 3, 1);                                      // semafor dostepu do pamieci wspoldzielonej
-    inicjalizujSemafor(sem_id, 4, 0);                                      // semafor do pracy z plikiem
-    int limit_pacjentow = losuj_int(MAX_GENERATE / 2) + MAX_GENERATE / 2; // Losowy limit pacjentow dla wszystkich lekarzy
+    inicjalizujSemafor(sem_id, 2, 0);                                      // semafor mowiacy, ze rejestracja jest zamknieta
+    inicjalizujSemafor(sem_id, 3, 1);                                      // semafor dostepu do tablicy przyjec w rejestracji
+    inicjalizujSemafor(sem_id, 4, 1);                                      // semafor do pracy z plikiem
+    
+    inicjalizujSemafor(sem_id, 5, 0); // pomocniczy semafor - czy budynek jest otwarty - moze byc signalowany przez dyrektora
+    inicjalizujSemafor(sem_id, 6, 1); // tymczasowy, pomocniczy semafor
+                                         // semafor do pracy z plikiem
+    int limit_pacjentow = 40;//losuj_int(MAX_GENERATE / 2) + MAX_GENERATE / 2; // Losowy limit pacjentow dla wszystkich lekarzy
     char arg2[10];                                                        // arg2 to limit pacjentow dla wszystkich lekarzy - uzywany jako argument w execl
     sprintf(arg2, "%d", limit_pacjentow);                                 // Konwersja liczby na ciag znakow
 

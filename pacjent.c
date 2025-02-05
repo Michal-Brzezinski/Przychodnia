@@ -36,8 +36,8 @@ int main(){
     key_t klucz_wejscia = generuj_klucz_ftok(".",'A');
     int sem_id = alokujSemafor(klucz_wejscia, S, IPC_CREAT | 0600);
 
-    key_t msg_key = generuj_klucz_ftok(".",'B');
-    int msg_id = alokujKolejkeKomunikatow(msg_key,IPC_CREAT | 0600);
+    key_t msg_key_rej = generuj_klucz_ftok(".",'B');
+    int msg_id_rej = alokujKolejkeKomunikatow(msg_key_rej,IPC_CREAT | 0600);
 
     key_t klucz_wyjscia = generuj_klucz_ftok(".", 'W');
     int msg_id_wyjscie = alokujKolejkeKomunikatow(klucz_wyjscia, IPC_CREAT | 0600);
@@ -57,32 +57,35 @@ int main(){
     if(pacjent.wiek >= 18)
     printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d probuje wejsc do budynku\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
     else
-    printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d probuje wejsc do budynku z opiekunem\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
-
-
-    while (valueSemafor(sem_id, 2) == 0);   // czeka na otwarcie rejestracji (zapewnia, ze nikogo nie wpuszczamy do budynku przed otwarciem rejestracji)    
+    printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d probuje wejsc do budynku z opiekunem\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip); 
 
     waitSemafor(sem_id, 0, 0);   /* SPRAWDZA CZY MOŻE WEJŚĆ DO BUDYNKU BAZUJĄC NA SEMAFORZE*/
-    
-    if(pacjent.wiek >= 18)
-    printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
-    else
-    printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku pod opieka\n",msg.id_pacjent, msg.wiek, msg.vip);
 
+    waitSemafor(sem_id, 6, 0);
+    if((valueSemafor(sem_id, 5) == 1)){
+        if(pacjent.wiek >= 18)
+        printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
+        else
+        printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku pod opieka\n",msg.id_pacjent, msg.wiek, msg.vip);
+        pacjent.czy_wszedl = 1;
+    }
+    signalSemafor(sem_id, 6);
     sleep(1); // opoznienie sekundy w budynku
 
     //  ________________________________    KOMUNIKACJA Z REJESTRACJĄ   __________________________________________
 
 
     // Pacjent oczekuje na rejestracje
-    if(valueSemafor(sem_id, 2) == 1){
+    waitSemafor(sem_id, 6, 0);
+    if((valueSemafor(sem_id, 2) == 1) && (valueSemafor(sem_id, 5) == 1)){
+        signalSemafor(sem_id, 6);
         if(pacjent.wiek >= 18)
         printBlue("[Pacjent]: Pacjent %d czeka w kolejce na rejestracje do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
         else
         printBlue("\033[1;34m[Pacjent]: Pacjent %d czeka z opiekunem w kolejce na rejestracje do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
             
-            // Wyslij wiadomosc do rejestracji
-        if (msgsnd(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+        // Wyslij wiadomosc do rejestracji
+        if (msgsnd(msg_id_rej, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
             perror_red("[Pacjent]: Blad msgsnd - pacjent\n");
             exit(1);
         }
@@ -94,18 +97,21 @@ int main(){
             perror_red("[Pacjent]: Blad msgrcv\n");
             exit(1);
         }
+    } 
+    else signalSemafor(sem_id, 6);
+    
+    waitSemafor(sem_id, 6, 0);
+    if(valueSemafor(sem_id, 5) == 1)   signalSemafor(sem_id, 0);    // zwolnienie semafora wejscia do budynku
+    signalSemafor(sem_id, 6);
+
+    
+    if(pacjent.czy_wszedl == 1){
+        // jezeli pacjent wszedl do budynku to musi tez z niego wyjsc
+        if(pacjent.wiek >= 18)
+        printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedl z budynku\n",msg.id_pacjent, msg.wiek, msg.vip);
+        else
+        printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedl z budynku wraz z opiekunem\n",msg.id_pacjent, msg.wiek, msg.vip);
     }
-    // waitSemafor(sem_id, 1, 0);   // czeka az przyjdzie komunikat
-    // if(valueSemafor(sem_id, 2)==0) signalSemafor(sem_id, 1);  
-    // oznajmia innym, ktorzy nie zdazyli przed zamknieciem, ze mozna wyjsc
-    // jezeli valueSemafor(sem_id, 2)==0 to znaczy ze rejestracja juz zamknieta
-
-    if(valueSemafor(sem_id, 2)==1)   signalSemafor(sem_id, 0);    // zwolnienie semafora wejscia do budynku
-    if(pacjent.wiek >= 18)
-    printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedl z budynku\n",msg.id_pacjent, msg.wiek, msg.vip);
-    else
-    printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedl z budynku wraz z opiekunem\n",msg.id_pacjent, msg.wiek, msg.vip);
-
 
     if (pacjent.wiek < 18) {
         // Sygnalizuj dziecku zakonczenie

@@ -18,13 +18,15 @@
 #include <semaphore.h> //semafory POSIX dla watkow
 #include <pthread.h>
 
-#define S 5 // ilosc semaforow w zbiorze
+#define S 7 // ilosc semaforow w zbiorze
 
 typedef struct {
     int id_pacjent; // numer pacjenta - pid
     int vip; // 1 jesli VIP, 0 jesli nie
     int wiek;    // Wiek pacjenta
     int id_lekarz;  // numer lekarza, do ktorego pacjent chce sie udac
+    int czy_wszedl; // zmienna, która pomaga w kontroli do wyjscia pacjenta z budynku
+    // przydaje sie gdy np. pacjent zdazyl wejsc do budynku, ale gdy chce wyjsc przychodnia juz zamknieta
 } Pacjent;
 //  struktura pacjenta 
 
@@ -40,7 +42,8 @@ typedef struct {
 
 void inicjalizujPacjenta(Pacjent *pacjent){
 
-    pacjent->id_pacjent = getpid();
+    pacjent->id_pacjent = getpid(); // za ID pacjenta bedzie sluzyc PID procesu, ktory go wywoluje
+    pacjent->czy_wszedl = 0;    // generujac pacjenta jest on poza budynkiem przychodni
 
     int pomocnicza_vip = losuj_int(100); // 0-99
     if (pomocnicza_vip < 20)  pacjent->vip = 1; // 20% szans

@@ -10,7 +10,7 @@ mainprog.o: mainprog.c MyLib/sem_utils.h MyLib/msg_utils.h MyLib/dekoratory.h My
 	@gcc -c mainprog.c
 
 # Kompilowanie MyLib/sem_utils.o
-MyLib/sem_utils.o: MyLib/sem_utils.c MyLib/sem_utils.h
+MyLib/sem_utils.o: MyLib/sem_utils.c MyLib/sem_utils.h MyLib/dekoratory.h
 	@gcc -c -o MyLib/sem_utils.o MyLib/sem_utils.c
 
 # Kompilowanie programu pacjent
@@ -22,7 +22,7 @@ pacjent.o: pacjent.c MyLib/sem_utils.h MyLib/msg_utils.h MyLib/dekoratory.h pacj
 	@gcc -c pacjent.c
 
 # Kompilowanie MyLib/msg_utils.o
-MyLib/msg_utils.o: MyLib/msg_utils.c MyLib/msg_utils.h
+MyLib/msg_utils.o: MyLib/msg_utils.c MyLib/msg_utils.h MyLib/dekoratory.h
 	@gcc -c -o MyLib/msg_utils.o MyLib/msg_utils.c
 
 # Kompilowanie MyLib/dekoratory.o
@@ -30,7 +30,7 @@ MyLib/dekoratory.o: MyLib/dekoratory.c MyLib/dekoratory.h
 	@gcc -c -o MyLib/dekoratory.o MyLib/dekoratory.c -lm  
 
 # Kompilowanie MyLib/shm_utils.o
-MyLib/shm_utils.o: MyLib/shm_utils.c MyLib/shm_utils.h
+MyLib/shm_utils.o: MyLib/shm_utils.c MyLib/shm_utils.h MyLib/dekoratory.h
 	@gcc -c -o MyLib/shm_utils.o MyLib/shm_utils.c
 
 # Kompilowanie programu rejestracja
