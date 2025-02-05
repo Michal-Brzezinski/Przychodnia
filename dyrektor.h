@@ -8,5 +8,8 @@
 #include <errno.h>
 #include <signal.h>
 
+#include "MyLib/dekoratory.h"
+
 
 void zakonczPraceLekarza(int pid_procesu);
+void nakarzWyjscPacjentom();
