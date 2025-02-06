@@ -40,6 +40,9 @@ typedef struct {
 } Wiadomosc;
 //  struktura wiadomosci w rejestracji
 
+Pacjent pacjent; //globalna zmienna do ulatiwenia obslugi SIGUSR2
+int sem_id;
+
 void inicjalizujPacjenta(Pacjent *pacjent){
 
     pacjent->id_pacjent = getpid(); // za ID pacjenta bedzie sluzyc PID procesu, ktory go wywoluje

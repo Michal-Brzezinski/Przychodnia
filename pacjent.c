@@ -12,6 +12,7 @@ volatile int zakoncz_program = 0; // Flaga do zakonczenia programu
 
 void *dziecko(void* _wat);
 void obsluga_SIGINT(int sig);
+void obsluga_USR2(int sig);
 
 int main(){
 
@@ -22,19 +23,25 @@ int main(){
     sigemptyset(&sa.sa_mask);
     sigaction(SIGINT, &sa, NULL);
 
+    // Obsluga sygnalu SIGUSR2
+    struct sigaction usr;
+    usr.sa_handler = obsluga_USR2;
+    usr.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+    sigemptyset(&usr.sa_mask);
+    sigaction(SIGUSR2, &usr, NULL);
+
     // Inicjalizacja semafora watkow
     // Moge tutaj inicjalizowac semafor, bo watki sa w jednym procesie
     sem_init(&opiekun_semafor, 0, 0);
 
-    // ----------- inicjalizacja wartosci struktury pacjenta
-    Pacjent pacjent;
+    // ----------- inicjalizacja wartosci struktury pacjenta -------------
     inicjalizujPacjenta(&pacjent);
 
     Wiadomosc msg;
     inicjalizujWiadomosc(&msg, &pacjent);
 
     key_t klucz_wejscia = generuj_klucz_ftok(".",'A');
-    int sem_id = alokujSemafor(klucz_wejscia, S, IPC_CREAT | 0600);
+    sem_id = alokujSemafor(klucz_wejscia, S, IPC_CREAT | 0600);
 
     key_t msg_key_rej = generuj_klucz_ftok(".",'B');
     int msg_id_rej = alokujKolejkeKomunikatow(msg_key_rej,IPC_CREAT | 0600);
@@ -137,25 +144,6 @@ int main(){
     return 0;
 }
 
-void obsluga_SIGINT(int sig) {
-
-    // Ustawienie flagi zakonczenia
-    zakoncz_program = 1;
-
-    // Odblokuj dziecko, jesli czeka na semaforze
-    sem_post(&opiekun_semafor);
-
-    // Anulowanie i oczekiwanie na zakonczenie watku dziecka
-    pthread_cancel(id_dziecko);
-    pthread_join(id_dziecko, NULL);
-
-    // Zniszczenie semafora
-    sem_destroy(&opiekun_semafor);
-
-    exit(0);
-}
-
-
 void *dziecko(void* _wat){
 
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
@@ -178,3 +166,65 @@ void *dziecko(void* _wat){
 
 }
 
+
+void obsluga_SIGINT(int sig) {
+
+    // Ustawienie flagi zakonczenia
+    zakoncz_program = 1;
+
+    // Odblokuj dziecko, jesli czeka na semaforze
+    sem_post(&opiekun_semafor);
+
+    // Anulowanie i oczekiwanie na zakonczenie watku dziecka
+    pthread_cancel(id_dziecko);
+    pthread_join(id_dziecko, NULL);
+
+    // Zniszczenie semafora
+    sem_destroy(&opiekun_semafor);
+
+    exit(0);
+}
+
+
+void obsluga_USR2(int sig){
+
+    printRed("Otrzymano sygnal wyproszenia wszystkich pacjentow z budynku.\n");
+
+    zakoncz_program = 1;
+    
+    waitSemafor(sem_id, 6, 0);
+    if(valueSemafor(sem_id, 5) == 1)   signalSemafor(sem_id, 0);    // zwolnienie semafora wejscia do budynku
+    signalSemafor(sem_id, 6);
+
+    
+    if(pacjent.czy_wszedl == 1){
+        // jezeli pacjent wszedl do budynku to musi tez z niego wyjsc
+        if(pacjent.wiek >= 18)
+        printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedl z budynku\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
+        else
+        printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedl z budynku wraz z opiekunem\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
+    }
+    
+    
+    if (pacjent.wiek < 18) {
+        // Sygnalizuj dziecku zakonczenie
+        sem_post(&opiekun_semafor);
+ 
+        // Oczekiwanie na zakonczenie pracy watku dziecka
+        
+        int przylacz_dziecko=pthread_join(id_dziecko,NULL);
+        if (przylacz_dziecko==-1) {
+            perror_red("[Pacjent]: Blad pthread_join - przylaczenie dziecka\n");
+            exit(1);
+        }
+    }
+
+    // Zniszczenie semafora
+    sem_destroy(&opiekun_semafor);
+    
+    if(pacjent.czy_wszedl == 0)
+    printBlue("[Pacjent]: Pacjent nr %d nie dal rady wejsc do budynku i zakonczyl dzialanie\n", pacjent.id_pacjent);
+
+    exit(0);
+
+}

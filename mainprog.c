@@ -38,8 +38,8 @@ GENEROWANIA PROCESÓW POTOMNYCH - LEKARZY, PACJENTÓW I REJESTRACJI
 #define MAX_GENERATE 200 // maksymalna liczba procesow pacjentow do wygenerowania
 #define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej
 const static char *building_max = "8";  //maksymalna liczba pacjentow w budynku
-const static char *Tp = "16:19";
-const static char *Tk = "16:20";
+const static char *Tp = "16:44";
+const static char *Tk = "16:45";
 
 // struktura pamieci wspoldzielonej
 // pamiec_wspoldzielona[0] - wspolny licznik pacjentow DLA REJESTRACJI
@@ -325,7 +325,7 @@ int main()
             pacjenci_pid[i] = pid;
         // Proces rodzic: sprawdz zakonczenie procesu potomnego bez blokowania
 
-        //usleep(3000000); // opzoznienie w generowaniu nowych pacjentow
+        usleep(3000000); // opzoznienie w generowaniu nowych pacjentow
     }
     while (waitpid(-1, NULL, WNOHANG) > 0);
     keep_generating = 0;
