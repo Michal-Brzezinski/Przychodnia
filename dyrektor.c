@@ -54,7 +54,7 @@ int main(int argc, char *argv[]){
     }
     close(fifo_fd);
     int pid_lekarza = atoi(pid_string);
-    printRed("O O O O Otrzymany pid losowego lekarza to: %d\n", pid_lekarza);
+    printRed("Otrzymany pid losowego lekarza to: %d\n", pid_lekarza);
 
     time_t now;
     struct tm *local;

@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
         perror_red("[Lekarz]: Nieprawidlowa liczba argumentow\n");
         exit(1);
     }
-    int id_lekarz = atoi(argv[1]);
+    id_lekarz = atoi(argv[1]);
     int limit_pacjentow = atoi(argv[2]);
     zwrocTabliceLimitowLekarzy(limit_pacjentow, limity_lekarzy);
     const char *stringTp = argv[3];
@@ -58,13 +58,23 @@ int main(int argc, char *argv[])
 
     // ______________________ OBSLUGA HANDLERA _____________________________
 
-    struct sigaction sa;
-    sa.sa_handler = obsluga_SIGINT; // Funkcja obslugujaca SIGINT
-    sigemptyset(&sa.sa_mask);       // Wyzerowanie maski sygnalow
-    sa.sa_flags = SA_RESTART | SA_NOCLDSTOP; // To samo co przy pacjencie
+    struct sigaction ctrlc;
+    ctrlc.sa_handler = obsluga_SIGINT; // Funkcja obslugujaca SIGINT
+    sigemptyset(&ctrlc.sa_mask);       // Wyzerowanie maski sygnalow
+    ctrlc.sa_flags = SA_RESTART | SA_NOCLDSTOP; // To samo co przy pacjencie
+    if(sigaction(SIGINT, &ctrlc, NULL) == -1) {
+        perror_red("[Lekarz]: Blad sigaction dla SIGINT\n");
+        exit(1);
+    }
 
-    sigaction(SIGINT, &sa, NULL);   // Ustawienie obsługi SIGINT
-
+    struct sigaction usr1;
+    usr1.sa_handler = obsluga_SIGUSR1;
+    sigemptyset(&usr1.sa_mask);
+    usr1.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+    if(sigaction(SIGUSR1, &usr1, NULL) == -1) {
+        perror_red("[Lekarz]: Blad sigaction dla SIGUSR1\n");
+        exit(1);
+    }
 
 
     //  ___________________________ OBSLUGA WATKU POZ2 ___________________________
@@ -114,8 +124,10 @@ void czynnosci_lekarskie(Lekarz *lekarz){
     }
     
     // Glowna petla dzialania lekarza
-    while(1){
+    while(koniec_pracy == 0){
         
+        sleep(12);
+
         Wiadomosc msg;
         // Sprawdz aktualny czas
         now = time(NULL);
@@ -126,7 +138,7 @@ void czynnosci_lekarskie(Lekarz *lekarz){
         if (current_time > Tk)
         {
             printMagenta("[%s]: Przychodnia jest zamknieta. Lekarz o id: %d konczy prace.\n", lekarz->nazwa, lekarz->id_lekarz);
-            
+            printMagenta("[%s]: Po zamknieciu przychodni obsluzono pacjentow:\n", lekarz->nazwa);
             wypiszIOdeslijPacjentow(lekarz, msg_id_lekarz);
 
             break; // Wyjscie z petli, gdy czas jest poza godzinami otwarcia
@@ -195,6 +207,32 @@ void czynnosci_lekarskie(Lekarz *lekarz){
         }
 
     }
+
+    printRed("Konczy sie lekarz %d\n", lekarz->id_lekarz);
+    if(koniec_pracy == 1){
+        // czynnosci jakie wykonuje lekarz po otrzymaniu sygnalu od Dyrektora
+        
+        printMagenta("[%s]: Przyjeto sygnal od Dyrektora. Lekarz konczy prace.\n Nieobsluzeni pacjenci do raportu:\n", lekarz->nazwa);
+        int kolejka_size;
+        Wiadomosc *pozostali = wypiszPacjentowWKolejce(msg_id_lekarz, &kolejka_size, lekarz);
+
+        int j;
+        for(j = 0; j < kolejka_size; j++){
+            if (msgsnd(msg_id_wyjscie, &pozostali[j], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+            perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
+            continue;
+            }
+        }
+        // !!!!!
+        // OBSLUGA ZAPISU DO PLIKU RAPORTU POZOSTALYCH PACJENTOW
+        // !!!!!
+
+        if (pozostali != NULL) {
+        free(pozostali); 
+        // zwalniam, poniewaz wypisz pacjentow dynamicznie alokuje tablice pidow, ktora trzeba zwolnic
+        }
+
+    }
     
     return;
 }
@@ -237,6 +275,24 @@ void badania_ambulatoryjne(Wiadomosc *msg, Lekarz *lekarz){
     }
 
     printMagenta("[Badania amb.]: pacjent nr %d skonczyl badania\n", msg->id_pacjent);
+}
+
+void obsluga_SIGUSR1(int sig){
+    printRed("%d : ODEBRANO SYGNAL OD DYREKTORA\n", id_lekarz);
+    koniec_pracy = 1;
+
+    key_t shm_key = generuj_klucz_ftok(".", 'X');
+    int shm_id = alokujPamiecWspoldzielona(shm_key, PAM_SIZE * sizeof(int), IPC_CREAT | 0600);
+    int *pamiec_wspoldzielona = dolaczPamiecWspoldzielona(shm_id, 0);
+
+    klucz_sem = generuj_klucz_ftok(".", 'A');
+    sem_id = alokujSemafor(klucz_sem, S, IPC_CREAT | 0600);
+
+    waitSemafor(sem_id, 3, 0);
+    pamiec_wspoldzielona[id_lekarz] = limity_lekarzy[id_lekarz-1];  // zakomunikowanie do rejestracji, zeby juz nie przyjmowali do tego lekarza
+    signalSemafor(sem_id, 3);
+    printRed("%d : WYKONANO NIEZBEDNE CZYNNOSCI\n", id_lekarz);
+
 }
 
 void obsluga_SIGINT(int sig) {

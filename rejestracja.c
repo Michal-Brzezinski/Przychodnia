@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
 
         // Sprawdz liczbe procesow oczekujacych na rejestracje ponownie
         int liczba_procesow = policzProcesy(msg_id_rej);
-        printRed("Liczba oczekujacych w kolejce wynosi:\t%d\n", liczba_procesow);
+        printYellow("Liczba oczekujacych w kolejce do rejestracji:\t%d\n", liczba_procesow);
         if ((liczba_procesow > building_max / 2) && (pid_okienka2 < 0)) // jezeli PID < 0 to znaczy ze okno2 jeszcze nie dziala
         {
             // Uruchomienie okienka nr 2

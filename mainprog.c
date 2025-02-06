@@ -38,8 +38,8 @@ GENEROWANIA PROCESÓW POTOMNYCH - LEKARZY, PACJENTÓW I REJESTRACJI
 #define MAX_GENERATE 200 // maksymalna liczba procesow pacjentow do wygenerowania
 #define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej
 const static char *building_max = "8";  //maksymalna liczba pacjentow w budynku
-const static char *Tp = "05:48";
-const static char *Tk = "05:49";
+const static char *Tp = "14:44";
+const static char *Tk = "14:45";
 
 // struktura pamieci wspoldzielonej
 // pamiec_wspoldzielona[0] - wspolny licznik pacjentow DLA REJESTRACJI

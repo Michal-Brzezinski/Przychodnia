@@ -18,6 +18,9 @@
 #include "MyLib/dekoratory.h"
 #include "MyLib/msg_utils.h"
 #include "MyLib/sem_utils.h"
+#include "MyLib/shm_utils.h"
+#define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej
+#define S 7     //rozmiar zbioru semaforow
 
 // Definicja typu wyliczeniowego dla lekarzy
 enum lekarze{ 
@@ -54,6 +57,8 @@ pthread_t POZ2;
 
 volatile int zakoncz_program = 0;
 
+volatile sig_atomic_t koniec_pracy = 0; // potrzebne do obslugi sygnalu dyrektora - zakonczenie pracy
+
 int sem_id, msg_id_lekarz, msg_id_rejestracja;
 key_t klucz_sem, klucz_kolejki_lekarza, klucz_kolejki_rejestracji;
 
@@ -62,6 +67,7 @@ int msg_id_wyjscie;
 
 int limit_POZ2; // globalne do ulatwienia dzialania programu
 int limity_lekarzy[5];
+int id_lekarz;  // przydaje sie w momencie osblugi sygnalu dyrektora
 
 int Tp, Tk; // godziny otwarcia przychodni
 
@@ -69,6 +75,7 @@ int Tp, Tk; // godziny otwarcia przychodni
 
 void *lekarzPOZ2(void* _arg);
 void obsluga_SIGINT(int sig);
+void obsluga_SIGUSR1(int sig);
 void czynnosci_lekarskie(Lekarz *lekarz);
 void wyslij_do_specjalisty(Wiadomosc *msg, Lekarz *lekarz);
 void badania_ambulatoryjne(Wiadomosc *msg, Lekarz *lekarz);
@@ -106,9 +113,9 @@ void inicjalizuj_lekarza(Lekarz* lekarz, int id_lekarz, int limit_pacjentow){
 
 }
 
-int *wypiszPacjentowWKolejce(int msg_id, int *rozmiar_kolejki, Lekarz *lekarz) {
+Wiadomosc *wypiszPacjentowWKolejce(int msg_id, int *rozmiar_kolejki, Lekarz *lekarz) {
     Wiadomosc msg;
-    int *pacjenci_po_zamknieciu_pid;
+    Wiadomosc *pacjenci_po_zamknieciu;
     int rozmiar = policzProcesy(msg_id);
     
     if (rozmiar == 0) {
@@ -118,49 +125,45 @@ int *wypiszPacjentowWKolejce(int msg_id, int *rozmiar_kolejki, Lekarz *lekarz) {
     }
 
     *rozmiar_kolejki = rozmiar; // dzieki wskaznikowi mozna przeniesc rozmiar kolejki poza funkcje 
-    pacjenci_po_zamknieciu_pid = (int *)(malloc(rozmiar * sizeof(int)));
-    if(pacjenci_po_zamknieciu_pid == NULL)
+    pacjenci_po_zamknieciu = (Wiadomosc *)(malloc(rozmiar * sizeof(Wiadomosc)));
+    if(pacjenci_po_zamknieciu == NULL)
     {
         perror_red("[wypiszPacjentowWKolejceLekarza]: malloc error\n");
         exit(1);
     }
     
-    printMagenta("[%s]: Po zamknieciu przychodni obsluzono pacjentow:\n", lekarz->nazwa);
-    
     int i=0; // zmienna do iteracji po tablicy zaalokowanej
     while (msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT) != -1) {
         
         print("[%s]: Pacjent nr %d, wiek: %d, vip: %d\n",lekarz->nazwa, msg.id_pacjent, msg.wiek, msg.vip);
-        pacjenci_po_zamknieciu_pid[i]=msg.id_pacjent;
+        pacjenci_po_zamknieciu[i] = msg;
         i++;
     }
     if (errno != ENOMSG) {
         perror_red("[wypiszPacjentowWKolejceLekarza]: Blad msgrcv\n");
     }
 
-    return pacjenci_po_zamknieciu_pid;
+    return pacjenci_po_zamknieciu;
 }
 
 
 void wypiszIOdeslijPacjentow(Lekarz *lekarz, int msg_id){
 
     int rozmiar_pozostalych = 0;
-    int *pidy_pozostalych = wypiszPacjentowWKolejce(msg_id_lekarz, &rozmiar_pozostalych, lekarz);
+    Wiadomosc *pozostali = wypiszPacjentowWKolejce(msg_id_lekarz, &rozmiar_pozostalych, lekarz);
     int i; // zmienna iteracyjna
 
     // wysylanie pozostalym pacjentom komunikatu o wyjsciu
     for(i=0;i<rozmiar_pozostalych;i++){    
-        Wiadomosc msg1;
-        msg1.mtype = pidy_pozostalych[i];
-        msg1.id_pacjent = pidy_pozostalych[i];
+
         // Wyslij pacjenta do domu
-        if (msgsnd(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+        if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
             perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
             continue;
         }
     }
-    if (pidy_pozostalych != NULL) {
-        free(pidy_pozostalych); 
+    if (pozostali != NULL) {
+        free(pozostali); 
         // zwalniam, poniewaz wypisz pacjentow dynamicznie alokuje tablice pidow, ktora trzeba zwolnic
     }
 
