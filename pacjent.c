@@ -67,8 +67,10 @@ int main(){
         printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
         else
         printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku pod opieka\n",msg.id_pacjent, msg.wiek, msg.vip);
-        pacjent.czy_wszedl = 1;
+        pacjent.czy_wszedl = 1; // ustawiam paramter pacjenta, ktory mowi, ze pacjent juz wszedl do budynku, wiec musi wyjsc w przyszlosci
     }
+    else signalSemafor(sem_id, 0); // must-have - jezeli nie udalo sie wejsc to zwolnij semafor dla innych na przyszlosc
+
     signalSemafor(sem_id, 6);
     sleep(1); // opoznienie sekundy w budynku
 
@@ -82,7 +84,7 @@ int main(){
         if(pacjent.wiek >= 18)
         printBlue("[Pacjent]: Pacjent %d czeka w kolejce na rejestracje do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
         else
-        printBlue("\033[1;34m[Pacjent]: Pacjent %d czeka z opiekunem w kolejce na rejestracje do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
+        printBlue("[Pacjent]: Pacjent %d czeka z opiekunem w kolejce na rejestracje do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
             
         // Wyslij wiadomosc do rejestracji
         if (msgsnd(msg_id_rej, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
@@ -128,6 +130,9 @@ int main(){
 
     // Zniszczenie semafora
     sem_destroy(&opiekun_semafor);
+    
+    if(pacjent.czy_wszedl == 0)
+    printBlue("[Pacjent]: Pacjent nr %d nie dal rady wejsc do budynku i zakonczyl dzialanie\n", pacjent.id_pacjent);
 
     return 0;
 }

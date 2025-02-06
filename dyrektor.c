@@ -16,22 +16,45 @@ void nakarzWyjscPacjentom(){
 
 int main(int argc, char *argv[]){
 
-    if (argc != 4)
+
+    //  ----------------------  KONWERTOWANIE ARGUMENTOW WYWOLANIA  ---------------------- 
+
+    if (argc != 3)
     {
         perror_red("[Dyrektor]: Nieprawidlowa liczba argumentow");
         exit(1);
     }
     
-    int pid_lekarza = atoi(argv[1]);
-    printGreen("Otrzymany jako argument pid lekarza to: %d\n", pid_lekarza);
-    
-    const char *stringTp = argv[2];
-    const char *stringTk = argv[3];
+    const char *stringTp = argv[1];
+    const char *stringTk = argv[2];
 
     int Tp = naSekundy(stringTp);
     int Tk = naSekundy(stringTk);
 
     printf("Odczytane sekundy to: %d - Tp oraz %d - Tk\n", Tp, Tk);
+
+    //  -------------------     INICJALIZACJA NIEZBEDNYCH IPC   ----------------------
+
+    key_t sem_key = generuj_klucz_ftok(".", 'A');
+    int sem_id = alokujSemafor(sem_key, S, IPC_CREAT | 0600);
+
+    //  ----------------------  ODCZYTANIE Z FIFO PIDU LOSOWEGO LEKARZA  ---------------------- 
+
+    // Odczyt PID lekarza z potoku nazwanego
+    int fifo_fd = open(FIFO_DYREKTOR, O_RDONLY);
+    if(fifo_fd == -1) {
+         perror_red("[Dyrektor]: Blad otwarcia potoku\n");
+         exit(1);
+    }
+    char pid_string[20];
+    if(read(fifo_fd, pid_string, sizeof(pid_string)) <= 0) {
+         perror_red("[Dyrektor]: Blad odczytu z potoku\n");
+         close(fifo_fd);
+         exit(1);
+    }
+    close(fifo_fd);
+    int pid_lekarza = atoi(pid_string);
+    printRed("O O O O Otrzymany pid losowego lekarza to: %d\n", pid_lekarza);
 
     time_t now;
     struct tm *local;
@@ -47,8 +70,9 @@ int main(int argc, char *argv[]){
 
         if(current_seconds >= Tp && current_seconds <= Tk){
             if(czynna == 0)
-            {            
-                printGreen("[Dyrektor]: Uruchomiono przychodnie: %02d:%02d:%02d\n", local->tm_hour, local->tm_min, local->tm_sec);
+            {     
+                signalSemafor(sem_id, 5);
+                printGreen("[Dyrektor]: Otwarto budynek przychodni\n");
                 czynna = 1;
             }
             printGreen("[Dyrektor]: Wykonuje papierologie dyrektora\n");
@@ -61,7 +85,7 @@ int main(int argc, char *argv[]){
             break;
         }
         else printCyan("[Dyrektor]: Przychodnia jest poza godzinami pracy\n");
-        sleep(5);
+        sleep(10);
     }
 
     return 0;

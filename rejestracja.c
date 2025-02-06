@@ -4,12 +4,20 @@
 int main(int argc, char *argv[])
 {
     
-    if (argc != 2)
+    if (argc != 5)
     {
         perror_red("[Rejestracja]: Nieprawidlowa liczba argumentow");
         exit(1);
     }
     
+    limit_pacjentow = atoi(argv[1]);
+    const char *stringTp = argv[2];
+    const char *stringTk = argv[3];
+    building_max = atoi(argv[4]);
+
+    Tp = naSekundy(stringTp);
+    Tk = naSekundy(stringTk);
+
     // _____________________    DOLACZENIE ZASOBOW IPC   ______________________
     
     msg_key_rej = generuj_klucz_ftok(".", 'B');
@@ -41,14 +49,9 @@ int main(int argc, char *argv[])
     msg_id_5 = alokujKolejkeKomunikatow(msg_key_5,IPC_CREAT | 0600);
     
     // ___________________  ROZPOCZECIE PRACY REJESTRACJI   _________________________
-    waitSemafor(sem_id, 6, 0);
-    signalSemafor(sem_id, 5);
-    signalSemafor(sem_id, 6);
-    printGreen("[Przychodnia]: Otwarto budynek\n");
     
-    printGreen("[Rejestracja]: Uruchomiono rejestracje\n");
-    
-    limit_pacjentow = atoi(argv[1]);
+    printGreen("[Rejestracja]: Wygenerowano proces rejestracji\n");
+
     zwrocTabliceLimitowLekarzy(limit_pacjentow, limity_lekarzy);
     
     printMagenta("Odczytane limity lekarzy to:\n");
@@ -60,18 +63,25 @@ int main(int argc, char *argv[])
     printMagenta("MEDYCYNA PRACY:\t%d\n", limity_lekarzy[4]);
     
     // Aktualny czas
-    time_t now = time(NULL);
-    struct tm *local = localtime(&now);
-    int current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
-    
-    // Godziny otwarcia i zamkniecia rejestracji (w sekundach od polnocy)
-    Tp = current_time;      // Aktualny czas
-    Tk = current_time + 50; // Aktualny czas + x sekund
+    time_t now;
+    struct tm *local;
+    int current_time;
 
-    printGreen("[Rejestracja]: Rejestracja uruchomiona, oczekuje na pacjentow\n");
+    //  Czekaj na godzine rozpoczecia dzialania przychodni
+    while(1){
+        now = time(NULL);
+        local = localtime(&now);
+        current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
+        if(current_time < Tp) sleep(5); //sprawdzaj czas co 5 sek
+        else break;
+        continue;
+    }
+        
     signalSemafor(sem_id, 2);   // podnosze semafor, ktory mowi o tym ze rejestracja jest uruchomiona
-
+    printGreen("[Rejestracja]: Rejestracja uruchomiona, oczekuje na pacjentow\n");
+    
     Wiadomosc msg;
+
     while (1)
     {
 
@@ -83,12 +93,13 @@ int main(int argc, char *argv[])
         //printf("\033[35mCzas: %02d:%02d:%02d\033[0m\n", local->tm_hour, local->tm_min, local->tm_sec);
         
         // Sprawdz, czy aktualny czas jest poza godzinami otwarcia
-        if (current_time < Tp || current_time > Tk)
+        if (current_time > Tk)
         {
             printYellow("[Rejestracja - 1 okienko]: Rejestracja jest zamknieta.\n");
             break; // Wyjscie z petli, gdy czas jest poza godzinami otwarcia
         }
 
+        printGreen("[Rejestracja - 1 okienko]: Oczekuje na komunikat pacjenta\n");
         // Czekaj na komunikat dla rejestracji od pacjenta
         if (msgrcv(msg_id_rej, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT) == -1)
         {
@@ -99,6 +110,7 @@ int main(int argc, char *argv[])
             }
 
             sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
+            printGreen("[Rejestracja - 1 okienko]: Zaden pacjent nie wyslal komuniaktu do rejestracji\n");
             continue;
         }    
 
@@ -162,12 +174,12 @@ int main(int argc, char *argv[])
         // Sprawdz liczbe procesow oczekujacych na rejestracje ponownie
         int liczba_procesow = policzProcesy(msg_id_rej);
         printRed("Liczba oczekujacych w kolejce wynosi:\t%d\n", liczba_procesow);
-        if ((liczba_procesow > BUILDING_MAX / 2) && (pid_okienka2 < 0)) // jezeli PID < 0 to znaczy ze okno2 jeszcze nie dziala
+        if ((liczba_procesow > building_max / 2) && (pid_okienka2 < 0)) // jezeli PID < 0 to znaczy ze okno2 jeszcze nie dziala
         {
             // Uruchomienie okienka nr 2
             uruchomOkienkoNr2(msg_id_rej, sem_id);
         }
-        else if (liczba_procesow < (BUILDING_MAX / 3) && (pid_okienka2 > 0))
+        else if (liczba_procesow < (building_max / 3) && (pid_okienka2 > 0))
         {
             // Jesli liczba procesow spadla ponizej N/3, zatrzymaj okienko nr 2
             zatrzymajOkienkoNr2();
@@ -236,7 +248,7 @@ void uruchomOkienkoNr2()
             //printf("\033[35mCzas: %02d:%02d:%02d\033[0m\n", local->tm_hour, local->tm_min, local->tm_sec);
             
             // Sprawdz, czy aktualny czas jest poza godzinami otwarcia
-            if (current_time < Tp || current_time > Tk)
+            if (current_time > Tk)
             {
                 printYellow("[Rejestracja - 2 okienko]: Przychodnia jest zamknieta.\n");
                 break; // Wyjscie z petli, gdy czas jest poza godzinami otwarcia

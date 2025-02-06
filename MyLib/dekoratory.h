@@ -37,3 +37,4 @@ void zwrocTabliceLimitowLekarzy(int limit_pacjentow, int *limity_lekarzy);
 void czekaj_na_procesy(pid_t *pid_array, int size);
 void wyczyscProcesyPacjentow();
 void usunNiepotrzebnePliki();
+int naSekundy(const char *time_str);

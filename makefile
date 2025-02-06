@@ -1,5 +1,5 @@
 # Cel domyślny
-all: mainprog pacjent rejestracja lekarz
+all: mainprog pacjent rejestracja lekarz dyrektor
 
 # Kompilowanie programu mainprog
 mainprog: mainprog.o MyLib/sem_utils.o MyLib/msg_utils.o MyLib/dekoratory.o MyLib/shm_utils.o
@@ -49,6 +49,14 @@ lekarz: lekarz.o MyLib/dekoratory.o MyLib/sem_utils.o MyLib/msg_utils.o MyLib/sh
 lekarz.o: lekarz.c MyLib/dekoratory.h MyLib/sem_utils.h MyLib/msg_utils.h lekarz.h MyLib/shm_utils.h
 	@gcc -c lekarz.c
 
+# Kompilowanie programu dyrektor
+dyrektor: dyrektor.o MyLib/dekoratory.o	MyLib/sem_utils.o
+	@gcc -o dyrektor dyrektor.o MyLib/dekoratory.o MyLib/sem_utils.o -lm  
+
+# Kompilowanie pliku dyrektor.o
+dyrektor.o: dyrektor.c dyrektor.h MyLib/dekoratory.h MyLib/sem_utils.h
+	@gcc -c dyrektor.c
+
 # Cel do czyszczenia obiektów i plików wykonywalnych
 clean:
-	@rm -f *.o mainprog pacjent rejestracja lekarz MyLib/*.o
+	@rm -f *.o mainprog pacjent rejestracja lekarz dyrektor MyLib/*.o

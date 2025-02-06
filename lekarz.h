@@ -63,6 +63,8 @@ int msg_id_wyjscie;
 int limit_POZ2; // globalne do ulatwienia dzialania programu
 int limity_lekarzy[5];
 
+int Tp, Tk; // godziny otwarcia przychodni
+
 //------------------------  FUNKCJE DEKLAROWANE W HEADERZE  --------------------------------
 
 void *lekarzPOZ2(void* _arg);

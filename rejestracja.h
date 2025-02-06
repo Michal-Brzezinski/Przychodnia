@@ -17,7 +17,6 @@
 #include "MyLib/msg_utils.h"
 #include "MyLib/dekoratory.h"
 
-#define BUILDING_MAX 3 // Maksymalna liczba pacjentow w budynku
 #define S 7 // Ilosc semaforow w zbiorze
 #define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej
 
@@ -75,6 +74,8 @@ int limit_pacjentow;
 
 // zmienne do operacji na czasie
 int Tp, Tk; // czas poczatkowy i czas koncowy (czas dzialania rejestracji)
+
+int building_max;
 
 // funkcje potrzebne do obslugi rejestracji
 

@@ -3,7 +3,7 @@
 DIRECTORY1="./*.o" 
 DIRECTORY2="MyLib/*.o"
 
-rm -f mainprog pacjent rejestracja lekarz
+rm -f mainprog pacjent rejestracja lekarz dyrektor fifo_dyrektor
 
 # Usuwanie plików z katalogu MyLib
 for file in $DIRECTORY1; do

@@ -3,7 +3,7 @@
 
 int main(int argc, char *argv[])
 {
-    if (argc != 3)
+    if (argc != 5)
     {
         perror_red("[Lekarz]: Nieprawidlowa liczba argumentow\n");
         exit(1);
@@ -11,6 +11,10 @@ int main(int argc, char *argv[])
     int id_lekarz = atoi(argv[1]);
     int limit_pacjentow = atoi(argv[2]);
     zwrocTabliceLimitowLekarzy(limit_pacjentow, limity_lekarzy);
+    const char *stringTp = argv[3];
+    const char *stringTk = argv[4];
+    Tp = naSekundy(stringTp);
+    Tk = naSekundy(stringTk);
 
     //____________________   INICJALIZACJA LEKARZA   ______________________
     Lekarz lekarz;
@@ -95,14 +99,19 @@ void czynnosci_lekarskie(Lekarz *lekarz){
 
 
     // Aktualny czas
-    time_t now = time(NULL);
-    struct tm *local = localtime(&now);
-    int current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
+    time_t now;
+    struct tm *local;
+    int current_time;
 
-    // Godziny otwarcia i zamkniecia rejestracji (w sekundach od polnocy)
-    int Tp = current_time;      // Aktualny czas
-    int Tk = current_time + 50; // Aktualny czas + x sekund 
-
+    //  Czekaj na godzine rozpoczecia dzialania przychodni
+    while(1){
+        now = time(NULL);
+        local = localtime(&now);
+        current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
+        if(current_time < Tp) sleep(5); //sprawdzaj czas co 5 sek
+        else break;
+        continue;
+    }
     
     // Glowna petla dzialania lekarza
     while(1){
@@ -114,7 +123,7 @@ void czynnosci_lekarskie(Lekarz *lekarz){
         current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
         
         // Sprawdz, czy aktualny czas jest poza godzinami otwarcia
-        if (current_time < Tp || current_time > Tk)
+        if (current_time > Tk)
         {
             printMagenta("[%s]: Przychodnia jest zamknieta. Lekarz o id: %d konczy prace.\n", lekarz->nazwa, lekarz->id_lekarz);
             
