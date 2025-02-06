@@ -38,8 +38,8 @@ GENEROWANIA PROCESÓW POTOMNYCH - LEKARZY, PACJENTÓW I REJESTRACJI
 #define MAX_GENERATE 200 // maksymalna liczba procesow pacjentow do wygenerowania
 #define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej
 const static char *building_max = "8";  //maksymalna liczba pacjentow w budynku
-const static char *Tp = "14:44";
-const static char *Tk = "14:45";
+const static char *Tp = "16:19";
+const static char *Tk = "16:20";
 
 // struktura pamieci wspoldzielonej
 // pamiec_wspoldzielona[0] - wspolny licznik pacjentow DLA REJESTRACJI
@@ -325,7 +325,7 @@ int main()
             pacjenci_pid[i] = pid;
         // Proces rodzic: sprawdz zakonczenie procesu potomnego bez blokowania
 
-        usleep(3000000); // opzoznienie w generowaniu nowych pacjentow
+        //usleep(3000000); // opzoznienie w generowaniu nowych pacjentow
     }
     while (waitpid(-1, NULL, WNOHANG) > 0);
     keep_generating = 0;
@@ -336,7 +336,7 @@ int main()
 
     while (keep_generating)
     { // dziala tak dlugo jak nie konczy sie generowanie pacjentow
-        sleep(1);
+        //sleep(1);
     }
 
     // Czekanie na zakończenie procesów potomnych
@@ -345,13 +345,15 @@ int main()
     waitpid(rejestracja_pid, NULL, 0);
 
     // KONCZENIE PRACY PROGRAMU: KONCZENIE ZBEDNYCH PROCESOW I ZWALNIANIE ZASOBOW
-    //wyczyscProcesyPacjentow();
+    wyczyscProcesyPacjentow();
     int status;
     while (waitpid(-1, &status, WNOHANG) > 0);
+    
     // Po zamknieciu ewentualnych pozostalych pacjentow, oczekuje na ich zakonczenie by uniknac zombie
 
     // Zakoncz wszystkie procesy pacjentow, ktore nie zdazyly sie zakonczyc, po zakonczeniu generatora pacjentow
     // i zakonczeniu rejestracji, aby nie prosily o nieistniejace juz zasoby
+
     zwolnijSemafor(klucz_wejscia);
     zwolnijKolejkeKomunikatow(klucz_wyjscia);
     zwolnijKolejkeKomunikatow(msg_key_rej);
@@ -365,5 +367,7 @@ int main()
     usunNiepotrzebnePliki();
 
     print("[Main]: Glowny proces zakonczyl sie po zakonczeniu wygenerowanych procesow\n");
+
+    
     return 0;
 }

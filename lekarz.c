@@ -118,15 +118,17 @@ void czynnosci_lekarskie(Lekarz *lekarz){
         now = time(NULL);
         local = localtime(&now);
         current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
-        if(current_time < Tp) sleep(5); //sprawdzaj czas co 5 sek
+        if(current_time < Tp){
+            continue;  
+            //sleep(5); //sprawdzaj czas co 5 sek
+        }
         else break;
-        continue;
     }
     
     // Glowna petla dzialania lekarza
-    while(koniec_pracy == 0){
+    while(koniec_pracy == 0 && zakoncz_program == 0){
         
-        sleep(12);
+        //sleep(12);
 
         Wiadomosc msg;
         // Sprawdz aktualny czas
@@ -144,71 +146,73 @@ void czynnosci_lekarskie(Lekarz *lekarz){
             break; // Wyjscie z petli, gdy czas jest poza godzinami otwarcia
         }
 
-        if (msgrcv(msg_id_lekarz, &msg, sizeof(Wiadomosc) - sizeof(long), -2, IPC_NOWAIT) == -1)        {
-         // Odbieranie komunikatow o pacjentach w kolejnosci: 0,1,2
-         //  typ 0 - odpowiada najwyzszemu priorytetowi, zostaje przyjety pierwszy (powrot z badan ambulatoryjnych)
-         //  typ 1 - odpowiada wysokiemu priorytetowi - standardowy vip
-         //  typ 2 - odpowiada niskiemu priorytetowi - zwykly pacjent
-         // W razie braku komuniaktow nie zawieszaj dzialania i pracuj w petli (idz dalej)
+        if(zakoncz_program == 0){
+            if (msgrcv(msg_id_lekarz, &msg, sizeof(Wiadomosc) - sizeof(long), -2, IPC_NOWAIT) == -1)        {
+            // Odbieranie komunikatow o pacjentach w kolejnosci: 0,1,2
+            //  typ 0 - odpowiada najwyzszemu priorytetowi, zostaje przyjety pierwszy (powrot z badan ambulatoryjnych)
+            //  typ 1 - odpowiada wysokiemu priorytetowi - standardowy vip
+            //  typ 2 - odpowiada niskiemu priorytetowi - zwykly pacjent
+            // W razie braku komuniaktow nie zawieszaj dzialania i pracuj w petli (idz dalej)
 
-            if (errno != ENOMSG)
-            {
-                perror_red("[Lekarz]: Blad msgrcv\n");
-                exit(1);
+                if (errno != ENOMSG)
+                {
+                    perror_red("[Lekarz]: Blad msgrcv\n");
+                    exit(1);
+                }
             }
-        }
-        else{
-            // Gdy zostanie odczytany komunikat wykonaj czynnosci:
+        
+            else{
+                // Gdy zostanie odczytany komunikat wykonaj czynnosci:
 
-            printMagenta("[%s]: Lekarz o id %d przyjal pacjenta %d o priorytecie: %d\n",lekarz->nazwa, lekarz->id_lekarz, msg.id_pacjent, msg.vip);
-            lekarz->licznik_pacjentow++;
-            if(lekarz->licznik_pacjentow >= lekarz->indywidualny_limit){
-                printMagenta("[%s]: Lekarz o id %d osiagnal limit pacjentow i konczy prace\n", lekarz->nazwa, lekarz->id_lekarz);
+                printMagenta("[%s]: Lekarz o id %d przyjal pacjenta %d o priorytecie: %d\n",lekarz->nazwa, lekarz->id_lekarz, msg.id_pacjent, msg.vip);
+                lekarz->licznik_pacjentow++;
+                if(lekarz->licznik_pacjentow >= lekarz->indywidualny_limit){
+                    printMagenta("[%s]: Lekarz o id %d osiagnal limit pacjentow i konczy prace\n", lekarz->nazwa, lekarz->id_lekarz);
 
-                msg.mtype = msg.id_pacjent;
+                    msg.mtype = msg.id_pacjent;
+                    // Wyslij pacjenta do domu
+                    if (msgsnd(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                        perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
+                        exit(1);
+                    }
+
+                    break;
+                }
+                
+                int czy_dodatkowe_badania = losuj_int(100);
+                
+                // obsluga wysylania na dodatkowe badania/do specjalisty
+                if(lekarz->id_lekarz == 1 && czy_dodatkowe_badania < 20){
+                            
+                    wyslij_do_specjalisty(&msg, lekarz);
+                    fflush(stdout);
+                    continue;
+                }
+
+                if(lekarz->id_lekarz != 1 && czy_dodatkowe_badania < 10){
+                            
+                    badania_ambulatoryjne(&msg, lekarz);
+                    fflush(stdout);
+                    --lekarz->licznik_pacjentow;
+                    // zmniejszam licznik pacjentow, bo dzieki temu pacjent, ktory
+                    // wroci z badan ambulatoryjnych nie bedzie liczony x2
+                    continue;
+                }
+                
+                // Informuj pacjenta, ze moze wyjsc z budynku
+                Wiadomosc msg1 = msg;
+                msg1.mtype = msg.id_pacjent;
                 // Wyslij pacjenta do domu
-                if (msgsnd(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                if (msgsnd(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
                     perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
                     exit(1);
                 }
-
-                break;
+                
             }
-            
-            int czy_dodatkowe_badania = losuj_int(100);
-            
-            // obsluga wysylania na dodatkowe badania/do specjalisty
-            if(lekarz->id_lekarz == 1 && czy_dodatkowe_badania < 20){
-                        
-                wyslij_do_specjalisty(&msg, lekarz);
-                fflush(stdout);
-                continue;
-            }
-
-            if(lekarz->id_lekarz != 1 && czy_dodatkowe_badania < 10){
-                        
-                badania_ambulatoryjne(&msg, lekarz);
-                fflush(stdout);
-                --lekarz->licznik_pacjentow;
-                // zmniejszam licznik pacjentow, bo dzieki temu pacjent, ktory
-                // wroci z badan ambulatoryjnych nie bedzie liczony x2
-                continue;
-            }
-            
-            // Informuj pacjenta, ze moze wyjsc z budynku
-            Wiadomosc msg1 = msg;
-            msg1.mtype = msg.id_pacjent;
-            // Wyslij pacjenta do domu
-            if (msgsnd(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-                perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
-                exit(1);
-            }
-            
         }
 
     }
 
-    printRed("Konczy sie lekarz %d\n", lekarz->id_lekarz);
     if(koniec_pracy == 1){
         // czynnosci jakie wykonuje lekarz po otrzymaniu sygnalu od Dyrektora
         
@@ -278,7 +282,7 @@ void badania_ambulatoryjne(Wiadomosc *msg, Lekarz *lekarz){
 }
 
 void obsluga_SIGUSR1(int sig){
-    printRed("%d : ODEBRANO SYGNAL OD DYREKTORA\n", id_lekarz);
+    printYellow("%d : ODEBRANO SYGNAL OD DYREKTORA\n", getpid());
     koniec_pracy = 1;
 
     key_t shm_key = generuj_klucz_ftok(".", 'X');
@@ -291,7 +295,6 @@ void obsluga_SIGUSR1(int sig){
     waitSemafor(sem_id, 3, 0);
     pamiec_wspoldzielona[id_lekarz] = limity_lekarzy[id_lekarz-1];  // zakomunikowanie do rejestracji, zeby juz nie przyjmowali do tego lekarza
     signalSemafor(sem_id, 3);
-    printRed("%d : WYKONANO NIEZBEDNE CZYNNOSCI\n", id_lekarz);
 
 }
 

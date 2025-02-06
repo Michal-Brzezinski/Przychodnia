@@ -105,8 +105,7 @@ int *wypiszPacjentowWKolejce(int msg_id, int semID, int *rozmiar_kolejki) {
         print("Pacjent nr %d, wiek: %d, vip: %d\n", msg.id_pacjent, msg.wiek, msg.vip);
         pacjenci_po_zamknieciu_pid[i]=msg.id_pacjent;
         i++;
-        // Informuj pacjenta, ze moze wyjsc z budynku
-        // signalSemafor(semID, 1);
+
     }
     if (errno != ENOMSG) {
         perror_red("[wypiszPacjentowWKolejceRejestracji]: Blad msgrcv\n");

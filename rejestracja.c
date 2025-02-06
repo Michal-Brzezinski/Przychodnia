@@ -72,9 +72,11 @@ int main(int argc, char *argv[])
         now = time(NULL);
         local = localtime(&now);
         current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
-        if(current_time < Tp) sleep(5); //sprawdzaj czas co 5 sek
+        if(current_time < Tp) {
+            //sleep(5); //sprawdzaj czas co 5 sek
+            continue;
+        }
         else break;
-        continue;
     }
         
     signalSemafor(sem_id, 2);   // podnosze semafor, ktory mowi o tym ze rejestracja jest uruchomiona
@@ -99,7 +101,7 @@ int main(int argc, char *argv[])
             break; // Wyjscie z petli, gdy czas jest poza godzinami otwarcia
         }
 
-        printGreen("[Rejestracja - 1 okienko]: Oczekuje na komunikat pacjenta\n");
+        //printGreen("[Rejestracja - 1 okienko]: Oczekuje na komunikat pacjenta\n");
         // Czekaj na komunikat dla rejestracji od pacjenta
         if (msgrcv(msg_id_rej, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT) == -1)
         {
@@ -109,8 +111,8 @@ int main(int argc, char *argv[])
                 perror_red("[Rejestracja - 1 okienko]: Blad msgrcv - pacjent->rejestracja\n");
             }
 
-            sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
-            printGreen("[Rejestracja - 1 okienko]: Zaden pacjent nie wyslal komuniaktu do rejestracji\n");
+            //sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
+            //printGreen("[Rejestracja - 1 okienko]: Zaden pacjent nie wyslal komuniaktu do rejestracji\n");
             continue;
         }    
 
@@ -186,7 +188,7 @@ int main(int argc, char *argv[])
         }
         
         // Proces rejestracji kontynuuje swoja prace
-        sleep(2);
+        //sleep(2);
     }
     zatrzymajOkienkoNr2(); // Zatrzymaj okienko nr 2 przed zakonczeniem pracy
     //
@@ -267,7 +269,7 @@ void uruchomOkienkoNr2()
                     exit(1);
                 }
                 
-                sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
+                //sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
                 continue;
             }
             
@@ -328,7 +330,7 @@ void uruchomOkienkoNr2()
 
 
 
-            sleep(2); // symulacja procesu rejestracji
+            //sleep(2); // symulacja procesu rejestracji
         }
     }
     else if (pid_okienka2 == -1)

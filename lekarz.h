@@ -55,7 +55,7 @@ typedef struct {
 
 pthread_t POZ2;
 
-volatile int zakoncz_program = 0;
+volatile sig_atomic_t zakoncz_program = 0;  // obsluga SIGINT
 
 volatile sig_atomic_t koniec_pracy = 0; // potrzebne do obslugi sygnalu dyrektora - zakonczenie pracy
 
@@ -150,7 +150,7 @@ Wiadomosc *wypiszPacjentowWKolejce(int msg_id, int *rozmiar_kolejki, Lekarz *lek
 void wypiszIOdeslijPacjentow(Lekarz *lekarz, int msg_id){
 
     int rozmiar_pozostalych = 0;
-    Wiadomosc *pozostali = wypiszPacjentowWKolejce(msg_id_lekarz, &rozmiar_pozostalych, lekarz);
+    Wiadomosc *pozostali = wypiszPacjentowWKolejce(msg_id, &rozmiar_pozostalych, lekarz);
     int i; // zmienna iteracyjna
 
     // wysylanie pozostalym pacjentom komunikatu o wyjsciu
