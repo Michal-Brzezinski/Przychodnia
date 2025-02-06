@@ -220,17 +220,27 @@ void czynnosci_lekarskie(Lekarz *lekarz){
         int kolejka_size;
         Wiadomosc *pozostali = wypiszPacjentowWKolejce(msg_id_lekarz, &kolejka_size, lekarz);
 
+
+        waitSemafor(sem_id, 4, 0);  // blokada dostępu do pliku "raport"
+        FILE *raport = fopen("raport", "a");
+        if (raport == NULL) {
+        perror_red("[Lekarz]: Blad otwarcia pliku raport\n"); exit(1);}
         int j;
         for(j = 0; j < kolejka_size; j++){
             if (msgsnd(msg_id_wyjscie, &pozostali[j], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
             perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
             continue;
             }
-        }
-        // !!!!!
-        // OBSLUGA ZAPISU DO PLIKU RAPORTU POZOSTALYCH PACJENTOW
-        // !!!!!
 
+            now = time(NULL);
+            local = localtime(&now);
+            fprintf(raport, "[%s]: %02d:%02d:%02d - pacjent nr %d w kolejce lekarza po Sygnale dyrektora, skierowany od %s do id: %d\n",
+            lekarz->nazwa, local->tm_hour, local->tm_min, local->tm_sec,
+            pozostali[j].id_pacjent, pozostali[j].kto_skierowal, pozostali[j].id_lekarz);
+            fflush(raport);
+        }
+        fclose(raport);
+        signalSemafor(sem_id, 4);
         if (pozostali != NULL) {
         free(pozostali); 
         // zwalniam, poniewaz wypisz pacjentow dynamicznie alokuje tablice pidow, ktora trzeba zwolnic

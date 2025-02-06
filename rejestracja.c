@@ -87,6 +87,8 @@ int main(int argc, char *argv[])
     while (1)
     {
 
+        //sleep(5);
+
         // Sprawdz aktualny czas
         now = time(NULL);
         local = localtime(&now);
@@ -132,6 +134,30 @@ int main(int argc, char *argv[])
             // obsluga braku miejsc do danego lekarza
 
             printYellow("[Rejestracja - 1 okienko]: Pacjent nr %d nie moze wejsc do lekarza o id %d - brak miejsc\n",msg.id_pacjent ,msg.id_lekarz);
+            
+            //_______________   WPISANIE NIEPRZYJETEGO PACJENTA DO RAPORTU  _____________________
+            
+            // Uzyskanie wyłącznego dostępu do pliku raport poprzez semafor nr 4
+            waitSemafor(sem_id, 4, 0);  // blokada dostępu do pliku "raport"
+            
+            // Otwarcie pliku "raport" – tworzy, jeśli nie istnieje; tryb "a" dopisuje linie
+            FILE *raport = fopen("raport", "a");
+            if (raport == NULL) {
+                perror_red("[Rejestracja - 1 okienko]: Blad otwarcia pliku raport\n");
+            } else {
+                now = time(NULL);
+                local = localtime(&now);
+                fprintf(raport, "[Rejestracja]: %02d:%02d:%02d - pacjent nr %d nie przyjety do lekarza %d, skierowany od %s\n",
+                        local->tm_hour, local->tm_min, local->tm_sec,
+                        msg.id_pacjent, msg.id_lekarz, msg.kto_skierowal);
+                fflush(raport);
+                fclose(raport);
+            }
+            signalSemafor(sem_id, 4);  // zwolnienie dostępu do pliku "raport"
+
+            // _____________________________________________________________________________________
+            
+            
             Wiadomosc msg1 = msg;
             msg1.mtype = msg.id_pacjent;
             
@@ -208,19 +234,36 @@ int main(int argc, char *argv[])
     // wysylanie pozostalym pacjentom komunikatu o wyjsciu
     // takze wypisz pacjentow, ktorzy byli w kolejce do rejestracji w momencie zamykania rejestracji
     int rozmiar_pozostalych = 0;
-    int *pidy_pozostalych = wypiszPacjentowWKolejce(msg_id_rej, sem_id, &rozmiar_pozostalych);
-    Wiadomosc msg1 = msg;
+    Wiadomosc *pozostali = wypiszPacjentowWKolejce(msg_id_rej, sem_id, &rozmiar_pozostalych);
     int i;
+    
+    
+    waitSemafor(sem_id, 4, 0);  // blokada dostępu do pliku "raport"
+    FILE *raport = fopen("raport", "a");
+    if (raport == NULL) {
+        perror_red("[Rejestracja - 1 okienko]: Blad otwarcia pliku raport\n"); exit(1);}
+    
     for(i=0;i<rozmiar_pozostalych;i++){    
-        msg1.mtype = pidy_pozostalych[i];
-        msg1.id_pacjent = pidy_pozostalych[i];
+
         // Wyslij pacjenta do domu
-        if (msgsnd(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+        if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
             perror_red("[Rejestracja]: Blad msgsnd - pacjent do domu\n");
             continue;
         }
+
+        now = time(NULL);
+        local = localtime(&now);
+        fprintf(raport, "[Rejestracja]: %02d:%02d:%02d - pacjent nr %d w kolejce po zakonczeniu rejestracji, skierowany od %s do id: %d\n",
+                local->tm_hour, local->tm_min, local->tm_sec,
+                pozostali[i].id_pacjent, pozostali[i].kto_skierowal, pozostali[i].id_lekarz);
+        fflush(raport);
+        
     }
-    free(pidy_pozostalych);
+    fclose(raport);
+    signalSemafor(sem_id, 4);  // zwolnienie dostępu do pliku "raport"
+
+    if (pozostali != NULL) 
+        free(pozostali); 
     
     return 0;
 }
@@ -241,6 +284,8 @@ void uruchomOkienkoNr2()
         
         while (1)
         {
+
+            //sleep(5);
 
             // Sprawdz aktualny czas
             now = time(NULL);
@@ -288,6 +333,32 @@ void uruchomOkienkoNr2()
                 // obsluga braku miejsc do danego lekarza
 
                 printYellow("[Rejestracja - 2 okienko]: Pacjent nr %d nie moze wejsc do lekarza o id %d - brak miejsc\n",msg.id_pacjent ,msg.id_lekarz);
+                
+                
+                //_______________   WPISANIE NIEPRZYJETEGO PACJENTA DO RAPORTU  _____________________
+                
+                // Uzyskanie wyłącznego dostępu do pliku raport poprzez semafor nr 4
+                waitSemafor(sem_id, 4, 0);  // blokada dostępu do pliku "raport"
+                
+                // Otwarcie pliku "raport" – tworzy, jeśli nie istnieje; tryb "a" dopisuje linie
+                FILE *raport = fopen("raport", "a");
+                if (raport == NULL) {
+                    perror_red("[Rejestracja - 1 okienko]: Blad otwarcia pliku raport\n");
+                } else {
+                    now = time(NULL);
+                    local = localtime(&now);
+                    fprintf(raport, "[Rejestracja]: %02d:%02d:%02d - pacjent nr %d nie przyjety do lekarza %d, skierowany od %s\n",
+                            local->tm_hour, local->tm_min, local->tm_sec,
+                            msg.id_pacjent, msg.id_lekarz, msg.kto_skierowal);
+                    fflush(raport);
+                    fclose(raport);
+                }
+                signalSemafor(sem_id, 4);  // zwolnienie dostępu do pliku "raport"
+
+                // _____________________________________________________________________________________
+                
+                
+                
                 msg.mtype = msg.id_pacjent;
                 
                 // Wyslij pacjenta do domu

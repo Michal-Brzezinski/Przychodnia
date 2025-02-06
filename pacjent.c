@@ -79,7 +79,7 @@ int main(){
     else signalSemafor(sem_id, 0); // must-have - jezeli nie udalo sie wejsc to zwolnij semafor dla innych na przyszlosc
 
     signalSemafor(sem_id, 6);
-    sleep(1); // opoznienie sekundy w budynku
+    //sleep(1); // opoznienie sekundy w budynku
 
     //  ________________________________    KOMUNIKACJA Z REJESTRACJĄ   __________________________________________
 
@@ -188,7 +188,7 @@ void obsluga_SIGINT(int sig) {
 
 void obsluga_USR2(int sig){
 
-    printRed("Otrzymano sygnal wyproszenia wszystkich pacjentow z budynku.\n");
+    printRed("Pacjent otrzymal sygnal wyproszenia wszystkich pacjentow z budynku.\n");
 
     zakoncz_program = 1;
     

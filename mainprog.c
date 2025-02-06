@@ -38,8 +38,8 @@ GENEROWANIA PROCESÓW POTOMNYCH - LEKARZY, PACJENTÓW I REJESTRACJI
 #define MAX_GENERATE 200 // maksymalna liczba procesow pacjentow do wygenerowania
 #define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej
 const static char *building_max = "8";  //maksymalna liczba pacjentow w budynku
-const static char *Tp = "16:44";
-const static char *Tk = "16:45";
+const static char *Tp = "18:05";
+const static char *Tk = "18:06";
 
 // struktura pamieci wspoldzielonej
 // pamiec_wspoldzielona[0] - wspolny licznik pacjentow DLA REJESTRACJI
@@ -152,7 +152,7 @@ int main()
     inicjalizujSemafor(sem_id, 1, 0);                            // potrzebny, aby proces pacjenta czekal na potwierdzenie przyjecia
     inicjalizujSemafor(sem_id, 2, 0);                            // semafor mowiacy, ze rejestracja jest zamknieta
     inicjalizujSemafor(sem_id, 3, 1);                            // semafor dostepu do tablicy przyjec w rejestracji
-    inicjalizujSemafor(sem_id, 4, 0);                            // semafor do pracy z plikiem 
+    inicjalizujSemafor(sem_id, 4, 1);                            // semafor do pracy z plikiem 
     inicjalizujSemafor(sem_id, 5, 0);                            // pomocniczy semafor - czy budynek jest otwarty - moze byc signalowany przez dyrektora
     inicjalizujSemafor(sem_id, 6, 1);                            // semafor do kontroli pracy nad semaforem 5
     

@@ -83,16 +83,16 @@ void uruchomOkienkoNr2();
 void zatrzymajOkienkoNr2();
 
 //  Wersja funkcji dla rejestracji - rozni sie nieznacznie od tej w lekarz.h
-int *wypiszPacjentowWKolejce(int msg_id, int semID, int *rozmiar_kolejki) {
+Wiadomosc *wypiszPacjentowWKolejce(int msg_id, int semID, int *rozmiar_kolejki) {
 // Funkcja w
     
     Wiadomosc msg;
-    int *pacjenci_po_zamknieciu_pid;
+    Wiadomosc *pacjenci_po_zamknieciu;
     int rozmiar = policzProcesy(msg_id);
     *rozmiar_kolejki = rozmiar; // dzieki wskaznikowi mozna przeniesc rozmiar kolejki poza funkcje 
     
-    pacjenci_po_zamknieciu_pid = (int *)(malloc(rozmiar * sizeof(int)));
-    if(pacjenci_po_zamknieciu_pid == NULL)
+    pacjenci_po_zamknieciu = (Wiadomosc *)(malloc(rozmiar * sizeof(Wiadomosc)));
+    if(pacjenci_po_zamknieciu == NULL)
     {
         perror_red("[wypiszPacjentowWKolejceRejestracji]: malloc error\n");
         exit(1);
@@ -103,12 +103,12 @@ int *wypiszPacjentowWKolejce(int msg_id, int semID, int *rozmiar_kolejki) {
     int i=0; // zmienna do iteracji
     while (msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT) != -1) {
         print("Pacjent nr %d, wiek: %d, vip: %d\n", msg.id_pacjent, msg.wiek, msg.vip);
-        pacjenci_po_zamknieciu_pid[i]=msg.id_pacjent;
+        pacjenci_po_zamknieciu[i] = msg;
         i++;
 
     }
     if (errno != ENOMSG) {
         perror_red("[wypiszPacjentowWKolejceRejestracji]: Blad msgrcv\n");
     }
-    return pacjenci_po_zamknieciu_pid;
+    return pacjenci_po_zamknieciu;
 }

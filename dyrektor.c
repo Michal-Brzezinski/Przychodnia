@@ -99,6 +99,8 @@ int main(int argc, char *argv[]){
                 zakonczPraceLekarza(pid_lekarza);
                 zakonczWywolanego = 1;
                 printYellow("[Dyrektor]: Wyslano sygnal do Lekarza: %d\n", pid_lekarza);
+
+                nakarzWyjscPacjentom();
             }
             
             //sleep(10);
@@ -110,7 +112,7 @@ int main(int argc, char *argv[]){
             break;
         }
         else {
-            printCyan("[Dyrektor]: Przychodnia jest poza godzinami pracy\n");
+            //printCyan("[Dyrektor]: Przychodnia jest poza godzinami pracy\n");
         }
         //sleep(10);
     }
