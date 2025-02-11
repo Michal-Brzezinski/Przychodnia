@@ -19,6 +19,7 @@ void zakonczPraceLekarza(int pid_procesu){
 }
 
 
+
 void nakarzWyjscPacjentom(){
     if (system("killall -s SIGUSR2 pacjent")== -1) 
         perror_red("[Dyrektor]: Nie udalo sie wyslac sygnalu o wyjsciu do pacjentow\n");
