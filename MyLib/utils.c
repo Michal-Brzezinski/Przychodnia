@@ -1,4 +1,4 @@
-#include "dekoratory.h"
+#include "utils.h"
 
 
 int losuj_int(int N) {
@@ -50,13 +50,13 @@ void printRed(const char *format, ...) {
     va_start(args, format);
 
     fflush(stdout);
-    // Wywołujemy vprintf z kodami kolorów
+    // Wywolujemy vprintf z kodami kolorow
     printf("%s", czerwony);
     vprintf(format, args);
     printf("%s", reset);
 
     va_end(args);
-    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjścia
+    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjscia
 }
 
 void printBlue(const char *format, ...) {
@@ -65,13 +65,13 @@ void printBlue(const char *format, ...) {
     va_start(args, format);
 
     fflush(stdout);
-    // Wywołujemy vprintf z kodami kolorów
+    // Wywolujemy vprintf z kodami kolorow
     printf("%s", niebieski);
     vprintf(format, args);
     printf("%s", reset);
 
     va_end(args);
-    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjścia
+    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjscia
 }
 
 void printGreen(const char *format, ...) {
@@ -80,13 +80,13 @@ void printGreen(const char *format, ...) {
     va_start(args, format);
 
     fflush(stdout);
-    // Wywołujemy vprintf z kodami kolorów
+    // Wywolujemy vprintf z kodami kolorow
     printf("%s", zielony);
     vprintf(format, args);
     printf("%s", reset);
 
     va_end(args);
-    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjścia
+    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjscia
 }
 
 void printYellow(const char *format, ...) {
@@ -95,13 +95,13 @@ void printYellow(const char *format, ...) {
     va_start(args, format);
 
     fflush(stdout);
-    // Wywołujemy vprintf z kodami kolorów
+    // Wywolujemy vprintf z kodami kolorow
     printf("%s", zolty);
     vprintf(format, args);
     printf("%s", reset);
 
     va_end(args);
-    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjścia
+    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjscia
 }
 
 void printCyan(const char *format, ...) {
@@ -110,13 +110,13 @@ void printCyan(const char *format, ...) {
     va_start(args, format);
 
     fflush(stdout);
-    // Wywołujemy vprintf z kodami kolorów
+    // Wywolujemy vprintf z kodami kolorow
     printf("%s", cyjan);
     vprintf(format, args);
     printf("%s", reset);
 
     va_end(args);
-    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjścia
+    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjscia
 }
 
 void printMagenta(const char *format, ...) {
@@ -125,13 +125,13 @@ void printMagenta(const char *format, ...) {
     va_start(args, format);
 
     fflush(stdout);
-    // Wywołujemy vprintf z kodami kolorów
+    // Wywolujemy vprintf z kodami kolorow
     printf("%s", magenta);
     vprintf(format, args);
     printf("%s", reset);
 
     va_end(args);
-    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjścia
+    fflush(stdout); // Wymusza natychmiastowe wypisanie do standardowego wyjscia
 }
 
 
@@ -227,4 +227,12 @@ int naSekundy(const char *time_str) {
         exit(1);
     }
     return hour * 3600 + minute * 60;   // bo w godzinie jest 3600 sek, a w minucie 60 sek
+}
+
+int zwrocObecnyCzas(){
+
+    time_t now = time(NULL);
+    struct tm *local = localtime(&now);
+    int current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
+    return current_time;
 }

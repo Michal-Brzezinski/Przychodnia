@@ -3,21 +3,20 @@
 void zakonczPraceLekarza(int pid_procesu){
     if (kill(pid_procesu, 0) == -1) {  // Sprawdzenie, czy proces istnieje
         if (errno == ESRCH) {
-            printYellow("[Dyrektor]: Proces lekarza o pid %d już nie istnieje\n", pid_procesu);
+            printYellow("[Dyrektor]: Proces lekarza o pid %d juz nie istnieje\n", pid_procesu);
         } else {
             perror_red("[Dyrektor]: Wystapil nieoczekiwany blad podczas sprawdzania statusu lekarza\n");
         }
         return;
     }
 
-    // Jeśli proces istnieje, wysyłamy sygnał
+    // Jesli proces istnieje, wysylamy sygnal
     if (kill(pid_procesu, SIGUSR1) == -1) { 
         perror_red("[Dyrektor]: Nie udalo sie wyslac sygnalu o zakonczeniu pracy do lekarza\n");
     } else {
         printRed("[Dyrektor]: Wyslano sygnal do zakonczenia pracy przez lekarza o pid: %d\n", pid_procesu);
     }
 }
-
 
 
 void nakarzWyjscPacjentom(){
@@ -69,41 +68,40 @@ int main(int argc, char *argv[]){
     int pid_lekarza = atoi(pid_string);
     printRed("Otrzymany pid losowego lekarza to: %d\n", pid_lekarza);
 
-    time_t now;
-    struct tm *local;
-    int current_seconds;
-
     int czynna = 0;
-    int zakonczWywolanego = 0; // flaga, czy już wykonano zakonczPraceLekarza
-    int los_wyzwalacz = 0;   // moment (w sekundach) w przedziale [Tp, Tk], w którym wywołamy funkcję
+    int zakonczWywolanego = 0; // flaga, czy juz wykonano zakonczPraceLekarza
+    int wypros_pacjentow = 0;  //flaga informujaca o tym czym wysylano juz sygnal do pacjentow
+    int los_wyzwalacz = 0;   // moment (w sekundach) w przedziale [Tp, Tk], w ktorym wywolamy funkcje
 
-    // Glowna pętla działania dyrektora
+    // Glowna petla dzialania dyrektora
     while(1){
-        now = time(NULL);
-        local = localtime(&now);
-        current_seconds = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
 
-        if(current_seconds >= Tp && current_seconds <= Tk){
-            // Jeśli budynek jest otwarty
+
+        if(zwrocObecnyCzas() >= Tp && zwrocObecnyCzas() <= Tk){
+            // Jesli budynek jest otwarty
             if(czynna == 0)
             {     
                 signalSemafor(sem_id, 5);
                 printGreen("[Dyrektor]: Otwarto budynek przychodni\n");
                 czynna = 1;
-                // Inicjalizujemy ziarno liczb losowych i wybieramy losowy moment pomiędzy Tp a Tk
+                // Inicjalizujemy ziarno liczb losowych i wybieramy losowy moment pomiedzy Tp a Tk
                 srand(time(NULL));
-                los_wyzwalacz = Tp + rand() % (Tk - Tp + 1);
+                los_wyzwalacz = Tk-25;//(Tp+Tk)/2 ; //w połowie programu lub: + rand() % (Tk - Tp + 1);
             }
 
-            // Jeśli jeszcze nie wykonano wywołania i osiągnięto losowy moment
-            if(!zakonczWywolanego && current_seconds >= los_wyzwalacz) {
+            // Jesli jeszcze nie wykonano wywolania i osiagnieto losowy moment
+            if(!zakonczWywolanego && zwrocObecnyCzas() >= los_wyzwalacz) {
                 zakonczPraceLekarza(pid_lekarza);
                 zakonczWywolanego = 1;
                 printYellow("[Dyrektor]: Wyslano sygnal do Lekarza: %d\n", pid_lekarza);
-
-                nakarzWyjscPacjentom();
             }
-            
+
+            if(zwrocObecnyCzas()>(Tk-15) && wypros_pacjentow==0) 
+            {
+                nakarzWyjscPacjentom();
+                wypros_pacjentow = 1;
+            }
+
             //sleep(10);
             continue;
         }
@@ -112,9 +110,7 @@ int main(int argc, char *argv[]){
             printYellow("[Dyrektor]: Przychodnia zostala zamknieta\n");
             break;
         }
-        else {
-            //printCyan("[Dyrektor]: Przychodnia jest poza godzinami pracy\n");
-        }
+        
         //sleep(10);
     }
 

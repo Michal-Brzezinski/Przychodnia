@@ -6,7 +6,7 @@
 #include <sys/sem.h>
 #include <sys/errno.h>
 
-#include "dekoratory.h"
+#include "utils.h"
 
 int alokujSemafor(key_t klucz, int number, int flagi);
 void inicjalizujSemafor(int semID, int number, int val);

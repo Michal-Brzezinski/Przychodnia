@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "dekoratory.h"
+#include "utils.h"
 
 int alokujKolejkeKomunikatow(key_t klucz, int flagi);
 int zwolnijKolejkeKomunikatow(key_t  klucz);

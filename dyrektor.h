@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <signal.h>
 
-#include "MyLib/dekoratory.h"
+#include "MyLib/utils.h"
 #include "MyLib/sem_utils.h"
 
 #define FIFO_DYREKTOR "fifo_dyrektor"   // nazwa kolejki fifo do przekazywania pidu lekarza dyrektorowi

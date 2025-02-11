@@ -15,7 +15,7 @@
 #define SA_NOCLDSTOP 0x00000001 
 #endif
 
-#include "MyLib/dekoratory.h"
+#include "MyLib/utils.h"
 #include "MyLib/msg_utils.h"
 #include "MyLib/sem_utils.h"
 #include "MyLib/shm_utils.h"
@@ -158,6 +158,8 @@ void wypiszIOdeslijPacjentow(Lekarz *lekarz, int msg_id){
 
         // Wyslij pacjenta do domu
         if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+            
+            //if(errno != )
             perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
             continue;
         }

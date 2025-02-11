@@ -61,21 +61,11 @@ int main(int argc, char *argv[])
     printMagenta("OKULISTA:\t%d\n",limity_lekarzy[2]);
     printMagenta("PEDIATRA:\t%d\n",limity_lekarzy[3]);
     printMagenta("MEDYCYNA PRACY:\t%d\n", limity_lekarzy[4]);
-    
-    // Aktualny czas
-    time_t now;
-    struct tm *local;
-    int current_time;
 
     //  Czekaj na godzine rozpoczecia dzialania przychodni
     while(1){
-        now = time(NULL);
-        local = localtime(&now);
-        current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
-        if(current_time < Tp) {
-            //sleep(5); //sprawdzaj czas co 5 sek
-            continue;
-        }
+        if(zwrocObecnyCzas() < Tp) continue;
+        
         else break;
     }
         
@@ -86,24 +76,14 @@ int main(int argc, char *argv[])
 
     while (1)
     {
-
-        //sleep(5);
-
-        // Sprawdz aktualny czas
-        now = time(NULL);
-        local = localtime(&now);
-        current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
-        
-        //printf("\033[35mCzas: %02d:%02d:%02d\033[0m\n", local->tm_hour, local->tm_min, local->tm_sec);
         
         // Sprawdz, czy aktualny czas jest poza godzinami otwarcia
-        if (current_time > Tk)
+        if (zwrocObecnyCzas() > Tk)
         {
             printYellow("[Rejestracja - 1 okienko]: Rejestracja jest zamknieta.\n");
             break; // Wyjscie z petli, gdy czas jest poza godzinami otwarcia
         }
-
-        //printGreen("[Rejestracja - 1 okienko]: Oczekuje na komunikat pacjenta\n");
+        
         // Czekaj na komunikat dla rejestracji od pacjenta
         if (msgrcv(msg_id_rej, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT) == -1)
         {
@@ -113,7 +93,7 @@ int main(int argc, char *argv[])
                 perror_red("[Rejestracja - 1 okienko]: Blad msgrcv - pacjent->rejestracja\n");
             }
 
-            //sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
+            sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
             //printGreen("[Rejestracja - 1 okienko]: Zaden pacjent nie wyslal komuniaktu do rejestracji\n");
             continue;
         }    
@@ -137,23 +117,23 @@ int main(int argc, char *argv[])
             
             //_______________   WPISANIE NIEPRZYJETEGO PACJENTA DO RAPORTU  _____________________
             
-            // Uzyskanie wyłącznego dostępu do pliku raport poprzez semafor nr 4
-            waitSemafor(sem_id, 4, 0);  // blokada dostępu do pliku "raport"
+            // Uzyskanie wylacznego dostepu do pliku raport poprzez semafor nr 4
+            waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
             
-            // Otwarcie pliku "raport" – tworzy, jeśli nie istnieje; tryb "a" dopisuje linie
+            // Otwarcie pliku "raport" – tworzy, jesli nie istnieje; tryb "a" dopisuje linie
             FILE *raport = fopen("raport", "a");
             if (raport == NULL) {
                 perror_red("[Rejestracja - 1 okienko]: Blad otwarcia pliku raport\n");
             } else {
-                now = time(NULL);
-                local = localtime(&now);
+                time_t now = time(NULL);
+                struct tm *local = localtime(&now);
                 fprintf(raport, "[Rejestracja]: %02d:%02d:%02d - pacjent nr %d nie przyjety do lekarza %d, skierowany od %s\n",
                         local->tm_hour, local->tm_min, local->tm_sec,
                         msg.id_pacjent, msg.id_lekarz, msg.kto_skierowal);
                 fflush(raport);
                 fclose(raport);
             }
-            signalSemafor(sem_id, 4);  // zwolnienie dostępu do pliku "raport"
+            signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
 
             // _____________________________________________________________________________________
             
@@ -172,16 +152,19 @@ int main(int argc, char *argv[])
 
         printGreen("[Rejestracja - 1 okienko]: Zarejestrowano pacjenta nr %d do lekarza: %d\n", msg.id_pacjent, msg.id_lekarz);
         msg.mtype = msg.vip; // ustalenie priorytetu przyjecia pacjenta
+        
         // Wyslij pacjenta do lekarza
-        if (msgsnd(msg_id_pom, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-            perror_red("[Rejestracja - 1 okienko]: Blad msgsnd - pacjent do lekarza\n");
-            signalSemafor(sem_id, 3);   // informuje o mozliwosci dzialania na tablicy przyjec
+        errno = 0;
+        if ((msgsnd(msg_id_pom, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) || zwrocObecnyCzas() > Tk) {
+            if(errno != 0)
+                perror_red("[Rejestracja - 1 okienko]: Blad msgsnd - pacjent do lekarza\n");
             
             msg.mtype = msg.id_pacjent;
             // Wyslij pacjenta do domu
             if (msgsnd(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
                 perror_red("[Rejestracja]: Blad msgsnd - pacjent do domu\n");
             }
+            signalSemafor(sem_id, 3);   // informuje o mozliwosci dzialania na tablicy przyjec
             continue;
         }
 
@@ -214,7 +197,7 @@ int main(int argc, char *argv[])
         }
         
         // Proces rejestracji kontynuuje swoja prace
-        //sleep(2);
+        sleep(2);
     }
     zatrzymajOkienkoNr2(); // Zatrzymaj okienko nr 2 przed zakonczeniem pracy
     //
@@ -230,7 +213,8 @@ int main(int argc, char *argv[])
 
     printYellow("[Rejestracja]: Czekam na sygnal zakonczenia generowania pacjentow...\n");
     printYellow("[Rejestracja]: Rejestracja zakonczyla dzialanie\n");
-    
+    system("killall -SIGUSR1 mainprog");
+
     // wysylanie pozostalym pacjentom komunikatu o wyjsciu
     // takze wypisz pacjentow, ktorzy byli w kolejce do rejestracji w momencie zamykania rejestracji
     int rozmiar_pozostalych = 0;
@@ -238,7 +222,7 @@ int main(int argc, char *argv[])
     int i;
     
     
-    waitSemafor(sem_id, 4, 0);  // blokada dostępu do pliku "raport"
+    waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
     FILE *raport = fopen("raport", "a");
     if (raport == NULL) {
         perror_red("[Rejestracja - 1 okienko]: Blad otwarcia pliku raport\n"); exit(1);}
@@ -251,8 +235,8 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        now = time(NULL);
-        local = localtime(&now);
+        time_t now = time(NULL);
+        struct tm *local = localtime(&now);
         fprintf(raport, "[Rejestracja]: %02d:%02d:%02d - pacjent nr %d w kolejce po zakonczeniu rejestracji, skierowany od %s do id: %d\n",
                 local->tm_hour, local->tm_min, local->tm_sec,
                 pozostali[i].id_pacjent, pozostali[i].kto_skierowal, pozostali[i].id_lekarz);
@@ -260,7 +244,7 @@ int main(int argc, char *argv[])
         
     }
     fclose(raport);
-    signalSemafor(sem_id, 4);  // zwolnienie dostępu do pliku "raport"
+    signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
 
     if (pozostali != NULL) 
         free(pozostali); 
@@ -277,25 +261,11 @@ void uruchomOkienkoNr2()
         // Dziecko: Okienko nr 2
         printGreen("[Rejestracja - 2 okienko]: Otworzenie okienka ...\n");
         
-        // Zmienne aktualnego czasu
-        time_t now;
-        struct tm *local;
-        int current_time;
-        
         while (1)
         {
-
-            //sleep(5);
-
-            // Sprawdz aktualny czas
-            now = time(NULL);
-            local = localtime(&now);
-            current_time = local->tm_hour * 3600 + local->tm_min * 60 + local->tm_sec;
-            
-            //printf("\033[35mCzas: %02d:%02d:%02d\033[0m\n", local->tm_hour, local->tm_min, local->tm_sec);
             
             // Sprawdz, czy aktualny czas jest poza godzinami otwarcia
-            if (current_time > Tk)
+            if (zwrocObecnyCzas() > Tk)
             {
                 printYellow("[Rejestracja - 2 okienko]: Przychodnia jest zamknieta.\n");
                 break; // Wyjscie z petli, gdy czas jest poza godzinami otwarcia
@@ -314,7 +284,7 @@ void uruchomOkienkoNr2()
                     exit(1);
                 }
                 
-                //sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
+                sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
                 continue;
             }
             
@@ -337,23 +307,23 @@ void uruchomOkienkoNr2()
                 
                 //_______________   WPISANIE NIEPRZYJETEGO PACJENTA DO RAPORTU  _____________________
                 
-                // Uzyskanie wyłącznego dostępu do pliku raport poprzez semafor nr 4
-                waitSemafor(sem_id, 4, 0);  // blokada dostępu do pliku "raport"
+                // Uzyskanie wylacznego dostepu do pliku raport poprzez semafor nr 4
+                waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
                 
-                // Otwarcie pliku "raport" – tworzy, jeśli nie istnieje; tryb "a" dopisuje linie
+                // Otwarcie pliku "raport" – tworzy, jesli nie istnieje; tryb "a" dopisuje linie
                 FILE *raport = fopen("raport", "a");
                 if (raport == NULL) {
                     perror_red("[Rejestracja - 1 okienko]: Blad otwarcia pliku raport\n");
                 } else {
-                    now = time(NULL);
-                    local = localtime(&now);
+                    time_t now = time(NULL);
+                    struct tm *local = localtime(&now);
                     fprintf(raport, "[Rejestracja]: %02d:%02d:%02d - pacjent nr %d nie przyjety do lekarza %d, skierowany od %s\n",
                             local->tm_hour, local->tm_min, local->tm_sec,
                             msg.id_pacjent, msg.id_lekarz, msg.kto_skierowal);
                     fflush(raport);
                     fclose(raport);
                 }
-                signalSemafor(sem_id, 4);  // zwolnienie dostępu do pliku "raport"
+                signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
 
                 // _____________________________________________________________________________________
                 
@@ -373,8 +343,12 @@ void uruchomOkienkoNr2()
             printGreen("[Rejestracja - 2 okienko]: Zarejestrowano pacjenta nr %d do lekarza: %d\n", msg.id_pacjent, msg.id_lekarz);
             msg.mtype = msg.vip; // ustalenie priorytetu przyjecia pacjenta
             // Wyslij pacjenta do lekarza
-            if (msgsnd(msg_id_pom, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-                perror_red("[Rejestracja - 2 okienko]: Blad msgsnd - pacjent do lekarza\n");
+            
+            
+            errno = 0;
+            if ((msgsnd(msg_id_pom, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) || zwrocObecnyCzas() > Tk) {
+                if(errno != 0)
+                    perror_red("[Rejestracja - 2 okienko]: Blad msgsnd - pacjent do lekarza\n");
                 
                 msg.mtype = msg.id_pacjent;
                 // Wyslij pacjenta do domu
@@ -384,6 +358,7 @@ void uruchomOkienkoNr2()
                 signalSemafor(sem_id, 3);   // informuje o mozliwosci dzialania na tablicy przyjec
                 continue;
             }
+            
             ++pamiec_wspoldzielona[msg.id_lekarz];   // zwieksz +1 liczbe przyjec do lekarza o podanym id
             ++pamiec_wspoldzielona[0]; // zwieksz glowny licznik przyjec
             printGreen("[Rejestracja 2 okno]: OBECNY LICZNIK PRZYJEC LEKARZA %d PO INKREMENTACJI: %d\n", msg.id_lekarz, pamiec_wspoldzielona[msg.id_lekarz]);
@@ -401,7 +376,7 @@ void uruchomOkienkoNr2()
 
 
 
-            //sleep(2); // symulacja procesu rejestracji
+            sleep(2); // symulacja procesu rejestracji
         }
     }
     else if (pid_okienka2 == -1)
@@ -417,7 +392,7 @@ void zatrzymajOkienkoNr2()
     {
         printYellow("[Rejestracja]: Zatrzymywanie okienka nr 2...\n");
         kill(pid_okienka2, SIGTERM); // Wyslac sygnal SIGTERM do procesu okienka nr 2 (zakonczenie)
-        waitpid(pid_okienka2, NULL, 0); // Czekaj na zakończenie procesu
+        waitpid(pid_okienka2, NULL, 0); // Czekaj na zakonczenie procesu
         pid_okienka2 = -1;  // pomaga w uruchamianiu okienka w glownej petli
         //mowiac scislej zapobiega kilkukrotnemu uruchomieniu okienka nr2 naraz
     }

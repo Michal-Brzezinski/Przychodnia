@@ -15,7 +15,7 @@
 #include "MyLib/sem_utils.h"
 #include "MyLib/shm_utils.h"
 #include "MyLib/msg_utils.h"
-#include "MyLib/dekoratory.h"
+#include "MyLib/utils.h"
 
 #define S 7 // Ilosc semaforow w zbiorze
 #define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej

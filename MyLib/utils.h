@@ -15,7 +15,7 @@
 
 const  static char *czerwony = "\033[1;31m";    // Czerwony kolor
 const static char *zielony = "\033[1;32m";  // Zielony kolor
-const static char *zolty = "\033[1;33m";  // Żolty kolor
+const static char *zolty = "\033[1;33m";  // Zolty kolor
 const static char *niebieski = "\033[1;34m";  // Niebieski kolor
 const static char *magenta = "\033[1;35m";  // Magenta kolor
 const static char *cyjan = "\033[1;36m";  // Cyjanowy kolor
@@ -38,3 +38,4 @@ void czekaj_na_procesy(pid_t *pid_array, int size);
 void wyczyscProcesyPacjentow();
 void usunNiepotrzebnePliki();
 int naSekundy(const char *time_str);
+int zwrocObecnyCzas();

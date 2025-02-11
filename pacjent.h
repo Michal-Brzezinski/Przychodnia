@@ -25,7 +25,7 @@ typedef struct {
     int vip; // 1 jesli VIP, 0 jesli nie
     int wiek;    // Wiek pacjenta
     int id_lekarz;  // numer lekarza, do ktorego pacjent chce sie udac
-    int czy_wszedl; // zmienna, która pomaga w kontroli do wyjscia pacjenta z budynku
+    int czy_wszedl; // zmienna, ktora pomaga w kontroli do wyjscia pacjenta z budynku
     // przydaje sie gdy np. pacjent zdazyl wejsc do budynku, ale gdy chce wyjsc przychodnia juz zamknieta
 } Pacjent;
 //  struktura pacjenta 
@@ -51,8 +51,8 @@ void inicjalizujPacjenta(Pacjent *pacjent){
     int pomocnicza_vip = losuj_int(100); // 0-99
     if (pomocnicza_vip < 20)  pacjent->vip = 1; // 20% szans
     else pacjent->vip  = 2; // 80% szans
-    /*WARTO ZWRÓCIĆ UWAGĘ, ŻE WARTOŚĆ VIP BĘDZIE 0 DLA PACJENTÓW
-    KTÓRZY WRACAJĄ Z BADAŃ AMBULATORYJNYCH*/
+    /*WARTO ZWROCIC UWAGE, ZE WARTOSC VIP BEDZIE 0 DLA PACJENTOW
+    KTORZY WRACAJA Z BADAN AMBULATORYJNYCH*/
 
     pacjent->wiek = losuj_int(100); // Wiek 0-100 lat
 

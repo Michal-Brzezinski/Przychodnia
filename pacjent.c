@@ -1,7 +1,7 @@
 
 #include "MyLib/msg_utils.h"
 #include "MyLib/sem_utils.h"
-#include "MyLib/dekoratory.h"
+#include "MyLib/utils.h"
 
 #include "pacjent.h"
 
@@ -15,20 +15,28 @@ void obsluga_SIGINT(int sig);
 void obsluga_USR2(int sig);
 
 int main(){
-
+    
     // Obsluga sygnalu SIGINT
     struct sigaction sa;
     sa.sa_handler = obsluga_SIGINT;
     sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
     sigemptyset(&sa.sa_mask);
-    sigaction(SIGINT, &sa, NULL);
+    if(sigaction(SIGINT, &sa, NULL) == -1)
+    {
+        perror_red("[Pacjent]: sigaction\n");
+        exit(1);
+    }
 
     // Obsluga sygnalu SIGUSR2
-    struct sigaction usr;
-    usr.sa_handler = obsluga_USR2;
-    usr.sa_flags = SA_RESTART | SA_NOCLDSTOP;
-    sigemptyset(&usr.sa_mask);
-    sigaction(SIGUSR2, &usr, NULL);
+    struct sigaction usr2;
+    usr2.sa_handler = obsluga_USR2;
+    usr2.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+    sigemptyset(&usr2.sa_mask);
+    if(sigaction(SIGUSR2, &usr2, NULL) == -1)
+    {
+        perror_red("[Pacjent]: sigaction\n");
+        exit(1);
+    }
 
     // Inicjalizacja semafora watkow
     // Moge tutaj inicjalizowac semafor, bo watki sa w jednym procesie
@@ -59,14 +67,14 @@ int main(){
         }
     }
     
-    // _______________________________  DOSTANIE SIĘ DO BUDYNKU     _______________________________________
+    // _______________________________  DOSTANIE SIE DO BUDYNKU     _______________________________________
     
     if(pacjent.wiek >= 18)
     printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d probuje wejsc do budynku\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
     else
     printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d probuje wejsc do budynku z opiekunem\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip); 
 
-    waitSemafor(sem_id, 0, 0);   /* SPRAWDZA CZY MOŻE WEJŚĆ DO BUDYNKU BAZUJĄC NA SEMAFORZE*/
+    waitSemafor(sem_id, 0, 0);   /* SPRAWDZA CZY MOZE WEJSC DO BUDYNKU BAZUJAC NA SEMAFORZE*/
 
     waitSemafor(sem_id, 6, 0);
     if((valueSemafor(sem_id, 5) == 1)){
@@ -79,9 +87,9 @@ int main(){
     else signalSemafor(sem_id, 0); // must-have - jezeli nie udalo sie wejsc to zwolnij semafor dla innych na przyszlosc
 
     signalSemafor(sem_id, 6);
-    //sleep(1); // opoznienie sekundy w budynku
+    sleep(3); // opoznienie sekundy w budynku
 
-    //  ________________________________    KOMUNIKACJA Z REJESTRACJĄ   __________________________________________
+    //  ________________________________    KOMUNIKACJA Z REJESTRACJA   __________________________________________
 
 
     // Pacjent oczekuje na rejestracje
@@ -184,7 +192,6 @@ void obsluga_SIGINT(int sig) {
 
     exit(0);
 }
-
 
 void obsluga_USR2(int sig){
 
