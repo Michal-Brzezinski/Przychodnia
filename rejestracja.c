@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
                 perror_red("[Rejestracja - 1 okienko]: Blad msgrcv - pacjent->rejestracja\n");
             }
 
-            sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
+            //sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
             //printGreen("[Rejestracja - 1 okienko]: Zaden pacjent nie wyslal komuniaktu do rejestracji\n");
             continue;
         }    
@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
         }
         
         // Proces rejestracji kontynuuje swoja prace
-        sleep(2);
+        //sleep(2);
     }
     zatrzymajOkienkoNr2(); // Zatrzymaj okienko nr 2 przed zakonczeniem pracy
     //
@@ -207,8 +207,6 @@ int main(int argc, char *argv[])
         printYellow("[Rejestracja]: Zablokowano wejscie nowych pacjentow do budynku\n");    
     }
     signalSemafor(sem_id, 6);
-    //inicjalizujSemafor(sem_id, 0, 0);    //zmienic sposob blokady - nie wolno reinicjalizowac
-    
     waitSemafor(sem_id, 2, 0);        // Oznajmij zakonczenie rejestracji
 
     printYellow("[Rejestracja]: Czekam na sygnal zakonczenia generowania pacjentow...\n");
@@ -220,7 +218,6 @@ int main(int argc, char *argv[])
     int rozmiar_pozostalych = 0;
     Wiadomosc *pozostali = wypiszPacjentowWKolejce(msg_id_rej, sem_id, &rozmiar_pozostalych);
     int i;
-    
     
     waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
     FILE *raport = fopen("raport", "a");
@@ -284,7 +281,7 @@ void uruchomOkienkoNr2()
                     exit(1);
                 }
                 
-                sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
+                //sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
                 continue;
             }
             
@@ -313,7 +310,7 @@ void uruchomOkienkoNr2()
                 // Otwarcie pliku "raport" – tworzy, jesli nie istnieje; tryb "a" dopisuje linie
                 FILE *raport = fopen("raport", "a");
                 if (raport == NULL) {
-                    perror_red("[Rejestracja - 1 okienko]: Blad otwarcia pliku raport\n");
+                    perror_red("[Rejestracja - 2 okienko]: Blad otwarcia pliku raport\n");
                 } else {
                     time_t now = time(NULL);
                     struct tm *local = localtime(&now);
@@ -376,8 +373,9 @@ void uruchomOkienkoNr2()
 
 
 
-            sleep(2); // symulacja procesu rejestracji
+            //sleep(2); // symulacja procesu rejestracji
         }
+        exit(0);
     }
     else if (pid_okienka2 == -1)
     {

@@ -98,8 +98,8 @@ int main(int argc, char *argv[]){
 
             if(zwrocObecnyCzas()>(Tk-15) && wypros_pacjentow==0) 
             {
-                nakarzWyjscPacjentom();
-                wypros_pacjentow = 1;
+                //nakarzWyjscPacjentom();
+                //wypros_pacjentow = 1;
             }
 
             //sleep(10);

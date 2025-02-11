@@ -35,12 +35,12 @@ GENEROWANIA PROCESOW POTOMNYCH - LEKARZY, PACJENTOW I REJESTRACJI
 #define FIFO_DYREKTOR "fifo_dyrektor"   // nazwa kolejki fifo do przekazywania pidu lekarza dyrektorowi
 
 #define S 7             // ilosc semaforow w zbiorze - w razie potrzeby zwiekszyc
-#define MAX_GENERATE 200 // maksymalna liczba procesow pacjentow do wygenerowania
+#define MAX_GENERATE 1000 // maksymalna liczba procesow pacjentow do wygenerowania
 #define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej
-int limit_pacjentow = 20; // maksymalna liczba pacjentow przyjetych przez wszystkich lekarzy
-const static char *building_max = "30";  //maksymalna liczba pacjentow w budynku
-const static char *Tp = "00:41";
-const static char *Tk = "00:43";
+int limit_pacjentow = 500; // maksymalna liczba pacjentow przyjetych przez wszystkich lekarzy
+const static char *building_max = "100";  //maksymalna liczba pacjentow w budynku
+const static char *Tp = "01:42";
+const static char *Tk = "01:44";
 
 // struktura pamieci wspoldzielonej
 // pamiec_wspoldzielona[0] - wspolny licznik pacjentow DLA REJESTRACJI
@@ -333,7 +333,7 @@ int main()
         // Teoretycznie ma ten sam handler zakonczenia procesow dzieci
     for (i = 0; i < MAX_GENERATE && keep_generating; i++)
     {
-        sleep_with_interrupts(1); // opzoznienie w generowaniu nowych pacjentow
+        //sleep_with_interrupts(1); // opzoznienie w generowaniu nowych pacjentow
         
         if(rejestracja_dziala == 0) {
             printYellow("[Main]: Proces generowania pacjentow zakonczyl sie po zamknieciu przychodni\n");

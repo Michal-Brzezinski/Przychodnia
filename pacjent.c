@@ -77,7 +77,7 @@ int main(){
     waitSemafor(sem_id, 0, 0);   /* SPRAWDZA CZY MOZE WEJSC DO BUDYNKU BAZUJAC NA SEMAFORZE*/
 
     waitSemafor(sem_id, 6, 0);
-    if((valueSemafor(sem_id, 5) == 1)){
+    if((valueSemafor(sem_id, 5) == 1 && sygnal2 == 0)){
         if(pacjent.wiek >= 18)
         printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
         else
@@ -87,14 +87,14 @@ int main(){
     else signalSemafor(sem_id, 0); // must-have - jezeli nie udalo sie wejsc to zwolnij semafor dla innych na przyszlosc
 
     signalSemafor(sem_id, 6);
-    sleep(3); // opoznienie sekundy w budynku
+    //sleep(3); // opoznienie sekundy w budynku
 
     //  ________________________________    KOMUNIKACJA Z REJESTRACJA   __________________________________________
 
 
     // Pacjent oczekuje na rejestracje
     waitSemafor(sem_id, 6, 0);
-    if((valueSemafor(sem_id, 2) == 1) && (valueSemafor(sem_id, 5) == 1)){
+    if((valueSemafor(sem_id, 2) == 1) && (valueSemafor(sem_id, 5) == 1 && sygnal2 == 0)){
         signalSemafor(sem_id, 6);
         if(pacjent.wiek >= 18)
         printBlue("[Pacjent]: Pacjent %d czeka w kolejce na rejestracje do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
@@ -102,17 +102,19 @@ int main(){
         printBlue("[Pacjent]: Pacjent %d czeka z opiekunem w kolejce na rejestracje do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
             
         // Wyslij wiadomosc do rejestracji
-        if (msgsnd(msg_id_rej, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-            perror_red("[Pacjent]: Blad msgsnd - pacjent\n");
-            exit(1);
-        }
-
-            Wiadomosc msg1;
-        if (msgrcv(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), msg.id_pacjent, 0) == -1)
-        {
-            // Pacjent czeka na potwierdzenie, ze moze wyjsc
-            perror_red("[Pacjent]: Blad msgrcv\n");
-            exit(1);
+        if(sygnal2 == 0){
+            if (msgsnd(msg_id_rej, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                perror_red("[Pacjent]: Blad msgsnd - pacjent\n");
+                exit(1);
+            }
+        
+                Wiadomosc msg1;
+            if (msgrcv(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), msg.id_pacjent, 0) == -1)
+            {
+                // Pacjent czeka na potwierdzenie, ze moze wyjsc
+                perror_red("[Pacjent]: Blad msgrcv\n");
+                exit(1);
+            }
         }
     } 
     else signalSemafor(sem_id, 6);
@@ -195,43 +197,6 @@ void obsluga_SIGINT(int sig) {
 
 void obsluga_USR2(int sig){
 
-    printRed("Pacjent otrzymal sygnal wyproszenia wszystkich pacjentow z budynku.\n");
-
-    zakoncz_program = 1;
-    
-    waitSemafor(sem_id, 6, 0);
-    if(valueSemafor(sem_id, 5) == 1)   signalSemafor(sem_id, 0);    // zwolnienie semafora wejscia do budynku
-    signalSemafor(sem_id, 6);
-
-    
-    if(pacjent.czy_wszedl == 1){
-        // jezeli pacjent wszedl do budynku to musi tez z niego wyjsc
-        if(pacjent.wiek >= 18)
-        printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedl z budynku\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
-        else
-        printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedl z budynku wraz z opiekunem\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
-    }
-    
-    
-    if (pacjent.wiek < 18) {
-        // Sygnalizuj dziecku zakonczenie
-        sem_post(&opiekun_semafor);
- 
-        // Oczekiwanie na zakonczenie pracy watku dziecka
-        
-        int przylacz_dziecko=pthread_join(id_dziecko,NULL);
-        if (przylacz_dziecko==-1) {
-            perror_red("[Pacjent]: Blad pthread_join - przylaczenie dziecka\n");
-            exit(1);
-        }
-    }
-
-    // Zniszczenie semafora
-    sem_destroy(&opiekun_semafor);
-    
-    if(pacjent.czy_wszedl == 0)
-    printBlue("[Pacjent]: Pacjent nr %d nie dal rady wejsc do budynku i zakonczyl dzialanie\n", pacjent.id_pacjent);
-
-    exit(0);
-
+    printRed("Pacjent %d otrzymal sygnal wyproszenia wszystkich pacjentow z budynku.\n", pacjent.id_pacjent);
+    sygnal2 = 1;
 }

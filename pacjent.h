@@ -42,6 +42,7 @@ typedef struct {
 
 Pacjent pacjent; //globalna zmienna do ulatiwenia obslugi SIGUSR2
 int sem_id;
+volatile sig_atomic_t sygnal2 = 0;
 
 void inicjalizujPacjenta(Pacjent *pacjent){
 
