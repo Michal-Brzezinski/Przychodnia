@@ -1,5 +1,7 @@
 #include "dyrektor.h"
 
+// #define SLEEP // zakomentowac, jesli nie chcemy sleepow w programie
+
 void zakonczPraceLekarza(int pid_procesu){
     if (kill(pid_procesu, 0) == -1) {  // Sprawdzenie, czy proces istnieje
         if (errno == ESRCH) {

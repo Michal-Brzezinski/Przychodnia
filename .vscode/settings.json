@@ -16,7 +16,8 @@
         "future": "c",
         "optional": "c",
         "stat.h": "c",
-        "signal.h": "c"
+        "signal.h": "c",
+        "msg_utils.h": "c"
     },
     "makefile.configureOnOpen": true,
     "C_Cpp.errorSquiggles": "enabled"

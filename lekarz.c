@@ -1,6 +1,8 @@
 #include "lekarz.h"
 
 
+// #define SLEEP // zakomentowac, jesli nie chcemy sleepow w programie
+
 int main(int argc, char *argv[])
 {
     if (argc != 5)
@@ -142,7 +144,11 @@ void czynnosci_lekarskie(Lekarz *lekarz){
             printMagenta("[%s]: Przychodnia jest zamknieta. Lekarz o id: %d konczy prace.\n", lekarz->nazwa, lekarz->id_lekarz);
             printMagenta("[%s]: Po zamknieciu przychodni obsluzono pacjentow:\n", lekarz->nazwa);
             wypiszIOdeslijPacjentow(lekarz, msg_id_lekarz);
-            //sleep(8);
+            
+            #ifdef SLEEP
+            sleep(8);
+            #endif
+
             break; // Wyjscie z petli, gdy czas jest poza godzinami otwarcia
         }
 
@@ -175,7 +181,11 @@ void czynnosci_lekarskie(Lekarz *lekarz){
                         perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
                         exit(1);
                     }
-                    //sleep(4);
+                    
+                    #ifdef SLEEP
+                    sleep(4);
+                    #endif
+                    
                     break;
                 }
                 
@@ -186,7 +196,11 @@ void czynnosci_lekarskie(Lekarz *lekarz){
                             
                     wyslij_do_specjalisty(&msg, lekarz);
                     fflush(stdout);
-                    //sleep(4);
+                    
+                    #ifdef SLEEP
+                    sleep(4);
+                    #endif
+
                     continue;
                 }
 
@@ -197,7 +211,11 @@ void czynnosci_lekarskie(Lekarz *lekarz){
                     --lekarz->licznik_pacjentow;
                     // zmniejszam licznik pacjentow, bo dzieki temu pacjent, ktory
                     // wroci z badan ambulatoryjnych nie bedzie liczony x2
-                    //sleep(4);
+                    
+                    #ifdef SLEEP
+                    sleep(4);
+                    #endif
+
                     continue;
                 }
                 
@@ -209,8 +227,10 @@ void czynnosci_lekarskie(Lekarz *lekarz){
                     perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
                     exit(1);
                 }
-                //sleep(4);
                 
+                #ifdef SLEEP
+                sleep(4);
+                #endif
             }
 
         }

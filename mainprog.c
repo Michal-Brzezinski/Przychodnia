@@ -43,7 +43,8 @@ const static int max_generate = 5000; // maksymalna liczba procesow pacjentow do
 int limit_pacjentow = 500; // maksymalna liczba pacjentow przyjetych przez wszystkich lekarzy
 const static char *building_max = "600";  //maksymalna liczba pacjentow w budynku
 const static char *Tp = "08:02";
-const static char *Tk = "08:58";
+const static char *Tk = "19:23";
+// #define SLEEP // zakomentowac, jesli nie chcemy sleepow w generowaniu pacjentow
 
 // struktura pamieci wspoldzielonej
 // pamiec_wspoldzielona[0] - wspolny licznik pacjentow DLA REJESTRACJI
@@ -334,8 +335,10 @@ int main()
         // Teoretycznie ma ten sam handler zakonczenia procesow dzieci
     for (i = 0; i < max_generate && keep_generating; i++)
     {
-        //sleep_with_interrupts(1); // opzoznienie w generowaniu nowych pacjentow
-        
+        #ifdef SLEEP
+        sleep_with_interrupts(1); // opzoznienie w generowaniu nowych pacjentow
+        #endif
+
         if(rejestracja_dziala == 0) {
             printYellow("[Main]: Proces generowania pacjentow zakonczyl sie po zamknieciu przychodni\n");
             break; // nie ma sensu generowac weicej pacjentow po zakonczeniu dzialania rejestracji

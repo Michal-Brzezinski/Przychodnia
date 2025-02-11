@@ -1,6 +1,8 @@
 
 #include "rejestracja.h"
 
+// #define SLEEP // zakomentowac, jesli nie chcemy sleepow w programie
+
 int main(int argc, char *argv[])
 {
     
@@ -93,7 +95,10 @@ int main(int argc, char *argv[])
                 perror_red("[Rejestracja - 1 okienko]: Blad msgrcv - pacjent->rejestracja\n");
             }
 
-            //sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
+            #ifdef SLEEP
+            sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
+            #endif
+            
             continue;
         }    
 
@@ -196,7 +201,10 @@ int main(int argc, char *argv[])
         }
         
         // Proces rejestracji kontynuuje swoja prace
-        //sleep(2);
+        
+        #ifdef SLEEP
+        sleep(2);
+        #endif
     }
     zatrzymajOkienkoNr2(); // Zatrzymaj okienko nr 2 przed zakonczeniem pracy
     //
@@ -280,7 +288,10 @@ void uruchomOkienkoNr2()
                     exit(1);
                 }
                 
-                //sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
+                #ifdef SLEEP
+                sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
+                #endif
+                
                 continue;
             }
             
@@ -371,8 +382,9 @@ void uruchomOkienkoNr2()
             signalSemafor(sem_id, 3);   // informuje o mozliwosci dzialania na tablicy przyjec
 
 
-
-            //sleep(2); // symulacja procesu rejestracji
+            #ifdef SLEEP
+            sleep(2); // symulacja procesu rejestracji
+            #endif
         }
         exit(0);
     }

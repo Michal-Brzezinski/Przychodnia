@@ -5,6 +5,8 @@
 
 #include "pacjent.h"
 
+// #define SLEEP // zakomentowac, jesli nie chcemy sleepow 
+
 
 sem_t opiekun_semafor; // Semafor do synchronizacji watkow
 pthread_t id_dziecko;
@@ -89,8 +91,10 @@ int main(){
     else signalSemafor(sem_id, 0); // jezeli nie udalo sie wejsc to zwolnij semafor dla innych na przyszlosc
 
     signalSemafor(sem_id, 6);
-    //sleep(3); // opoznienie sekundy w budynku
-
+    
+    #ifdef SLEEP
+    sleep(3); // opoznienie sekundy w budynku
+    #endif
     //  ________________________________    KOMUNIKACJA Z REJESTRACJA   __________________________________________
 
 
