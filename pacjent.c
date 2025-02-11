@@ -77,17 +77,19 @@ int main(){
     waitSemafor(sem_id, 0, 0);   /* SPRAWDZA CZY MOZE WEJSC DO BUDYNKU BAZUJAC NA SEMAFORZE*/
 
     waitSemafor(sem_id, 6, 0);
-    if((valueSemafor(sem_id, 5) == 1 && sygnal2 == 0)){
-        if(pacjent.wiek >= 18)
-        printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
-        else
-        printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku pod opieka\n",msg.id_pacjent, msg.wiek, msg.vip);
-        pacjent.czy_wszedl = 1; // ustawiam paramter pacjenta, ktory mowi, ze pacjent juz wszedl do budynku, wiec musi wyjsc w przyszlosci
+    if((valueSemafor(sem_id, 5) == 1)){
+        if( sygnal2 == 0){
+            if(pacjent.wiek >= 18)
+            printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku\n",pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
+            else
+            printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku pod opieka\n",msg.id_pacjent, msg.wiek, msg.vip);
+            pacjent.czy_wszedl = 1; // ustawiam paramter pacjenta, ktory mowi, ze pacjent juz wszedl do budynku, wiec musi wyjsc w przyszlosci
+        }
     }
-    else signalSemafor(sem_id, 0); // must-have - jezeli nie udalo sie wejsc to zwolnij semafor dla innych na przyszlosc
+    else signalSemafor(sem_id, 0); // jezeli nie udalo sie wejsc to zwolnij semafor dla innych na przyszlosc
 
     signalSemafor(sem_id, 6);
-    //sleep(3); // opoznienie sekundy w budynku
+    sleep(3); // opoznienie sekundy w budynku
 
     //  ________________________________    KOMUNIKACJA Z REJESTRACJA   __________________________________________
 

@@ -70,7 +70,7 @@ int main(int argc, char *argv[]){
 
     int czynna = 0;
     int zakonczWywolanego = 0; // flaga, czy juz wykonano zakonczPraceLekarza
-    int wypros_pacjentow = 0;  //flaga informujaca o tym czym wysylano juz sygnal do pacjentow
+    int wypros_pacjentow = 0;  // flaga informujaca o tym czym wysylano juz sygnal do pacjentow
     int los_wyzwalacz = 0;   // moment (w sekundach) w przedziale [Tp, Tk], w ktorym wywolamy funkcje
 
     // Glowna petla dzialania dyrektora
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]){
                 signalSemafor(sem_id, 5);
                 printGreen("[Dyrektor]: Otwarto budynek przychodni\n");
                 czynna = 1;
-                // Inicjalizujemy ziarno liczb losowych i wybieramy losowy moment pomiedzy Tp a Tk
+                // Inicjalizujemy ziarno liczb losowych i wybieramy losowy moment 
                 srand(time(NULL));
                 los_wyzwalacz = Tk-25;//(Tp+Tk)/2 ; //w połowie programu lub: + rand() % (Tk - Tp + 1);
             }
@@ -96,13 +96,14 @@ int main(int argc, char *argv[]){
                 printYellow("[Dyrektor]: Wyslano sygnal do Lekarza: %d\n", pid_lekarza);
             }
 
-            if(zwrocObecnyCzas()>(Tk-15) && wypros_pacjentow==0) 
+            if(zwrocObecnyCzas()>(Tp+10) && wypros_pacjentow==0) 
             {
-                //nakarzWyjscPacjentom();
-                //wypros_pacjentow = 1;
+                // w losowy sposob wysylam takze drugi wygnał - w zależności o czasu
+                nakarzWyjscPacjentom();
+                wypros_pacjentow = 1;
+                sleep(3);
             }
 
-            //sleep(10);
             continue;
         }
 
@@ -111,7 +112,6 @@ int main(int argc, char *argv[]){
             break;
         }
         
-        //sleep(10);
     }
 
     return 0;

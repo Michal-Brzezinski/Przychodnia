@@ -93,8 +93,7 @@ int main(int argc, char *argv[])
                 perror_red("[Rejestracja - 1 okienko]: Blad msgrcv - pacjent->rejestracja\n");
             }
 
-            //sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
-            //printGreen("[Rejestracja - 1 okienko]: Zaden pacjent nie wyslal komuniaktu do rejestracji\n");
+            sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
             continue;
         }    
 
@@ -175,8 +174,8 @@ int main(int argc, char *argv[])
         
         waitSemafor(sem_id, 6, 0);
         if((pamiec_wspoldzielona[0] >= limit_pacjentow) && (valueSemafor(sem_id, 5) == 1)){
-              waitSemafor(sem_id, 5, 0);
-              printYellow("Wyczerpano limit przyjec na ten dzien, zablokowano wejscie pacjentow do budynku\n");
+            waitSemafor(sem_id, 5, 0);
+            printYellow("Wyczerpano limit przyjec na ten dzien, zablokowano wejscie pacjentow do budynku\n");
         }
         signalSemafor(sem_id, 6);
 
@@ -197,7 +196,7 @@ int main(int argc, char *argv[])
         }
         
         // Proces rejestracji kontynuuje swoja prace
-        //sleep(2);
+        sleep(2);
     }
     zatrzymajOkienkoNr2(); // Zatrzymaj okienko nr 2 przed zakonczeniem pracy
     //
@@ -281,7 +280,7 @@ void uruchomOkienkoNr2()
                     exit(1);
                 }
                 
-                //sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
+                sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
                 continue;
             }
             
@@ -373,7 +372,7 @@ void uruchomOkienkoNr2()
 
 
 
-            //sleep(2); // symulacja procesu rejestracji
+            sleep(2); // symulacja procesu rejestracji
         }
         exit(0);
     }

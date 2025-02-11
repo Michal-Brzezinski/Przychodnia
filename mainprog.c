@@ -35,25 +35,26 @@ GENEROWANIA PROCESOW POTOMNYCH - LEKARZY, PACJENTOW I REJESTRACJI
 #define FIFO_DYREKTOR "fifo_dyrektor"   // nazwa kolejki fifo do przekazywania pidu lekarza dyrektorowi
 
 #define S 7             // ilosc semaforow w zbiorze - w razie potrzeby zwiekszyc
-#define MAX_GENERATE 1000 // maksymalna liczba procesow pacjentow do wygenerowania
 #define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej
-int limit_pacjentow = 500; // maksymalna liczba pacjentow przyjetych przez wszystkich lekarzy
-const static char *building_max = "100";  //maksymalna liczba pacjentow w budynku
-const static char *Tp = "01:42";
-const static char *Tk = "01:44";
+
+
+// Dane do moderowania pracy programu
+const static int max_generate = 50; // maksymalna liczba procesow pacjentow do wygenerowania
+int limit_pacjentow = 25; // maksymalna liczba pacjentow przyjetych przez wszystkich lekarzy
+const static char *building_max = "10";  //maksymalna liczba pacjentow w budynku
+const static char *Tp = "05:14";
+const static char *Tk = "06:02";
 
 // struktura pamieci wspoldzielonej
 // pamiec_wspoldzielona[0] - wspolny licznik pacjentow DLA REJESTRACJI
 // pamiec_wspoldzielona[1-5] - limity pacjentow dla lekarzy DLA REJESTRACJI
-// pamiec_wspoldzielona[6] - licznik procesow, ktore zapisaly do pamieci dzielonej
 
-volatile sig_atomic_t keep_generating = 1;
+volatile sig_atomic_t keep_generating = 1;  // zmienne sig_atomic_t do obslugi sygnalow
 volatile sig_atomic_t rejestracja_dziala = 1;
 pid_t generator_lekarzy_pid = -1;
 pid_t rejestracja_pid = -1;
 pid_t dyrektor_pid = -1;
 pid_t lekarze_pid[5];             // Tablica do przechowywania PID-ow procesow lekarzy
-pid_t pacjenci_pid[MAX_GENERATE]; // Tablica do przechowywania PID-ow procesow pacjentow
 
 int shm_id; // id pamieci wspoldzielonej
 int *pamiec_wspoldzielona;
@@ -78,6 +79,7 @@ key_t msg_key_MP;     // klucz do kolejki do LEKARZA MEDYCYNY PRACY
 
 
 void sleep_with_interrupts(int seconds) {
+// funkcja sleep z obsluga przerwania sygnalami
     struct timespec req, rem;
     req.tv_sec = seconds;
     req.tv_nsec = 0;
@@ -171,8 +173,7 @@ int main()
     inicjalizujSemafor(sem_id, 4, 1);                            // semafor do pracy z plikiem 
     inicjalizujSemafor(sem_id, 5, 0);                            // pomocniczy semafor - czy budynek jest otwarty - moze byc signalowany przez dyrektora
     inicjalizujSemafor(sem_id, 6, 1);                            // semafor do kontroli pracy nad semaforem 5
-                                                 // Losowy limit pacjentow dla wszystkich lekarzy
-    // alternatywnie losuj_int(MAX_GENERATE / 2) + MAX_GENERATE / 2;
+                                                 
     char arg2[10];                                                        // arg2 to limit pacjentow dla wszystkich lekarzy - uzywany jako argument w execl
     sprintf(arg2, "%d", limit_pacjentow);                                 // Konwersja liczby na ciag znakow
 
@@ -301,7 +302,7 @@ int main()
         //  ______________  PRZEKAZANIE PIDU LOSOWEGO LEKARZA DO DYREKTORA PRZEZ FIFO   _____________________
     
 
-        int losowy_indeks_tablicy_PIDow_lekarzy = 0;//losuj_int(4); //losuje indeksy od 0 do 4 czyli tak jak chce
+        int losowy_indeks_tablicy_PIDow_lekarzy = losuj_int(4); //losuje indeksy od 0 do 4 czyli tak jak chce
         int random_lekarz_pid = lekarze_pid[losowy_indeks_tablicy_PIDow_lekarzy];
         
         // Otwieramy potok do zapisu i wysylamy PID (jako ciag znakow)
@@ -320,7 +321,7 @@ int main()
 
         //  ____________________________________________________________________________________________
 
-
+        while (waitpid(-1, NULL, WNOHANG) > 0); // czeka na zakonczenie pracy wszystkich lekarzy
         exit(0); // Zakoncz proces potomny po wygenerowaniu pacjentow
     }
 
@@ -331,9 +332,9 @@ int main()
 
         // Proces potomny: generowanie pacjentow
         // Teoretycznie ma ten sam handler zakonczenia procesow dzieci
-    for (i = 0; i < MAX_GENERATE && keep_generating; i++)
+    for (i = 0; i < max_generate && keep_generating; i++)
     {
-        //sleep_with_interrupts(1); // opzoznienie w generowaniu nowych pacjentow
+        sleep_with_interrupts(1); // opzoznienie w generowaniu nowych pacjentow
         
         if(rejestracja_dziala == 0) {
             printYellow("[Main]: Proces generowania pacjentow zakonczyl sie po zamknieciu przychodni\n");
@@ -351,9 +352,6 @@ int main()
             perror_red("[Main]: Blad execl dla pacjenta\n");
             exit(2);
         }
-        else
-            pacjenci_pid[i] = pid;
-        // Proces rodzic: sprawdz zakonczenie procesu potomnego bez blokowania
 
     }
     while (waitpid(-1, NULL, WNOHANG) > 0);
