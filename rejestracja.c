@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
                 perror_red("[Rejestracja - 1 okienko]: Blad msgrcv - pacjent->rejestracja\n");
             }
 
-            sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
+            //sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
             continue;
         }    
 
@@ -108,7 +108,6 @@ int main(int argc, char *argv[])
         }
 
         waitSemafor(sem_id, 3, 0);  // czekam na mozliowosc bezpiecznej operacji na liczniku przyjec
-
         if(limity_lekarzy[msg.id_lekarz-1]<=(pamiec_wspoldzielona[msg.id_lekarz])){
             // obsluga braku miejsc do danego lekarza
 
@@ -154,6 +153,7 @@ int main(int argc, char *argv[])
         
         // Wyslij pacjenta do lekarza
         errno = 0;
+        
         if ((msgsnd(msg_id_pom, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) || zwrocObecnyCzas() > Tk) {
             if(errno != 0)
                 perror_red("[Rejestracja - 1 okienko]: Blad msgsnd - pacjent do lekarza\n");
@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
         ++pamiec_wspoldzielona[0]; // zwieksz glowny licznik przyjec
         printGreen("[Rejestracja 1 okno]: OBECNY LICZNIK PRZYJEC LEKARZA %d PO INKREMENTACJI: %d\n", msg.id_lekarz, pamiec_wspoldzielona[msg.id_lekarz]);
         // licznik sie zwieksza wylacznie, gdy wyslanie wiadomosci do lekarza sie powiodlo
-        
+        printRed("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
         waitSemafor(sem_id, 6, 0);
         if((pamiec_wspoldzielona[0] >= limit_pacjentow) && (valueSemafor(sem_id, 5) == 1)){
             waitSemafor(sem_id, 5, 0);
@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
         }
         
         // Proces rejestracji kontynuuje swoja prace
-        sleep(2);
+        //sleep(2);
     }
     zatrzymajOkienkoNr2(); // Zatrzymaj okienko nr 2 przed zakonczeniem pracy
     //
@@ -280,7 +280,7 @@ void uruchomOkienkoNr2()
                     exit(1);
                 }
                 
-                sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
+                //sleep(2); // Czekaj 2 sekundy i sprawdz ponownie
                 continue;
             }
             
@@ -372,7 +372,7 @@ void uruchomOkienkoNr2()
 
 
 
-            sleep(2); // symulacja procesu rejestracji
+            //sleep(2); // symulacja procesu rejestracji
         }
         exit(0);
     }

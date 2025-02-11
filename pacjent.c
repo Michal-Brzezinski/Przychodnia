@@ -89,7 +89,7 @@ int main(){
     else signalSemafor(sem_id, 0); // jezeli nie udalo sie wejsc to zwolnij semafor dla innych na przyszlosc
 
     signalSemafor(sem_id, 6);
-    sleep(3); // opoznienie sekundy w budynku
+    //sleep(3); // opoznienie sekundy w budynku
 
     //  ________________________________    KOMUNIKACJA Z REJESTRACJA   __________________________________________
 

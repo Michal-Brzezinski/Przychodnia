@@ -96,13 +96,13 @@ int main(int argc, char *argv[]){
                 printYellow("[Dyrektor]: Wyslano sygnal do Lekarza: %d\n", pid_lekarza);
             }
 
-            if(zwrocObecnyCzas()>(Tp+10) && wypros_pacjentow==0) 
-            {
-                // w losowy sposob wysylam takze drugi wygnał - w zależności o czasu
-                nakarzWyjscPacjentom();
-                wypros_pacjentow = 1;
-                sleep(3);
-            }
+            // if(zwrocObecnyCzas()>(Tp+10) && wypros_pacjentow==0) 
+            // {
+            //     // w losowy sposob wysylam takze drugi wygnał - w zależności o czasu
+            //     nakarzWyjscPacjentom();
+            //     wypros_pacjentow = 1;
+            //     sleep(3);
+            // }
 
             continue;
         }

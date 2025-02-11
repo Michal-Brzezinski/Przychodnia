@@ -39,11 +39,11 @@ GENEROWANIA PROCESOW POTOMNYCH - LEKARZY, PACJENTOW I REJESTRACJI
 
 
 // Dane do moderowania pracy programu
-const static int max_generate = 50; // maksymalna liczba procesow pacjentow do wygenerowania
-int limit_pacjentow = 25; // maksymalna liczba pacjentow przyjetych przez wszystkich lekarzy
-const static char *building_max = "10";  //maksymalna liczba pacjentow w budynku
-const static char *Tp = "05:14";
-const static char *Tk = "06:02";
+const static int max_generate = 5000; // maksymalna liczba procesow pacjentow do wygenerowania
+int limit_pacjentow = 500; // maksymalna liczba pacjentow przyjetych przez wszystkich lekarzy
+const static char *building_max = "600";  //maksymalna liczba pacjentow w budynku
+const static char *Tp = "08:02";
+const static char *Tk = "08:58";
 
 // struktura pamieci wspoldzielonej
 // pamiec_wspoldzielona[0] - wspolny licznik pacjentow DLA REJESTRACJI
@@ -334,7 +334,7 @@ int main()
         // Teoretycznie ma ten sam handler zakonczenia procesow dzieci
     for (i = 0; i < max_generate && keep_generating; i++)
     {
-        sleep_with_interrupts(1); // opzoznienie w generowaniu nowych pacjentow
+        //sleep_with_interrupts(1); // opzoznienie w generowaniu nowych pacjentow
         
         if(rejestracja_dziala == 0) {
             printYellow("[Main]: Proces generowania pacjentow zakonczyl sie po zamknieciu przychodni\n");

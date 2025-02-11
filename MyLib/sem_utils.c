@@ -60,10 +60,11 @@ int waitSemafor(int semID, int number, int flags)
    if ( semop(semID, operacje, 1) == -1 )
    {
       if(errno == EINTR)
-         return 0;
-
+         waitSemafor(semID, number, flags);
+      else{
       perror_red("Blad semop (waitSemafor)");
       exit(1);
+      }
    }
    
    return 1;
