@@ -251,6 +251,7 @@ void czynnosci_lekarskie(Lekarz *lekarz){
         perror_red("[Lekarz]: Blad otwarcia pliku raport\n"); exit(1);}
         int j;
         for(j = 0; j < kolejka_size; j++){
+            pozostali[j].mtype = pozostali[j].id_pacjent;
             if (msgsnd(msg_id_wyjscie, &pozostali[j], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
             perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
             continue;

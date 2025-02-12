@@ -20,6 +20,10 @@ int main(int argc, char *argv[])
     Tp = naSekundy(stringTp);
     Tk = naSekundy(stringTk);
 
+    // signal(SIGUSR2, handlerSIGUSR2);
+
+    signal(SIGUSR2, zatrzymajOkienkoNr2);
+
     // _____________________    DOLACZENIE ZASOBOW IPC   ______________________
     
     msg_key_rej = generuj_klucz_ftok(".", 'B');
@@ -118,11 +122,15 @@ int main(int argc, char *argv[])
 
             printYellow("[Rejestracja - 1 okienko]: Pacjent nr %d nie moze wejsc do lekarza o id %d - brak miejsc\n",msg.id_pacjent ,msg.id_lekarz);
             
+            msg.mtype = msg.id_pacjent;
+            // Wyslij pacjenta do domu
+            if (msgsnd(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                perror_red("[Rejestracja - 1 okienko]: Blad msgsnd - pacjent do domu\n");
+            }
             //_______________   WPISANIE NIEPRZYJETEGO PACJENTA DO RAPORTU  _____________________
             
             // Uzyskanie wylacznego dostepu do pliku raport poprzez semafor nr 4
             waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
-            
             // Otwarcie pliku "raport" – tworzy, jesli nie istnieje; tryb "a" dopisuje linie
             FILE *raport = fopen("raport", "a");
             if (raport == NULL) {
@@ -141,13 +149,6 @@ int main(int argc, char *argv[])
             // _____________________________________________________________________________________
             
             
-            Wiadomosc msg1 = msg;
-            msg1.mtype = msg.id_pacjent;
-            
-            // Wyslij pacjenta do domu
-            if (msgsnd(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-                perror_red("[Rejestracja - 1 okienko]: Blad msgsnd - pacjent do domu\n");
-            }
             signalSemafor(sem_id, 3);   // informuje o mozliwosci dzialania na tablicy przyjec
 
             continue;
@@ -155,7 +156,6 @@ int main(int argc, char *argv[])
 
         printGreen("[Rejestracja - 1 okienko]: Zarejestrowano pacjenta nr %d do lekarza: %d\n", msg.id_pacjent, msg.id_lekarz);
         msg.mtype = msg.vip; // ustalenie priorytetu przyjecia pacjenta
-        
         // Wyslij pacjenta do lekarza
         errno = 0;
         
@@ -176,11 +176,19 @@ int main(int argc, char *argv[])
         ++pamiec_wspoldzielona[0]; // zwieksz glowny licznik przyjec
         printGreen("[Rejestracja 1 okno]: OBECNY LICZNIK PRZYJEC LEKARZA %d PO INKREMENTACJI: %d\n", msg.id_lekarz, pamiec_wspoldzielona[msg.id_lekarz]);
         // licznik sie zwieksza wylacznie, gdy wyslanie wiadomosci do lekarza sie powiodlo
-        printRed("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
+        
         waitSemafor(sem_id, 6, 0);
         if((pamiec_wspoldzielona[0] >= limit_pacjentow) && (valueSemafor(sem_id, 5) == 1)){
             waitSemafor(sem_id, 5, 0);
             printYellow("Wyczerpano limit przyjec na ten dzien, zablokowano wejscie pacjentow do budynku\n");
+        
+            odeslijPacjentowPrzekroczenieLimitu(1);
+            odeslano_pacjentow_po_osiagnieciu_limitu1 = 1;
+        }
+
+        if((valueSemafor(sem_id, 5) == 0) && odeslano_pacjentow_po_osiagnieciu_limitu1 == 0){
+        odeslijPacjentowPrzekroczenieLimitu(1);
+        odeslano_pacjentow_po_osiagnieciu_limitu1 = 1;
         }
         signalSemafor(sem_id, 6);
 
@@ -192,6 +200,7 @@ int main(int argc, char *argv[])
         if ((liczba_procesow > building_max / 2) && (pid_okienka2 < 0)) // jezeli PID < 0 to znaczy ze okno2 jeszcze nie dziala
         {
             // Uruchomienie okienka nr 2
+            zakoncz2okienko = 0;
             uruchomOkienkoNr2(msg_id_rej, sem_id);
         }
         else if (liczba_procesow < (building_max / 3) && (pid_okienka2 > 0))
@@ -223,6 +232,7 @@ int main(int argc, char *argv[])
     // wysylanie pozostalym pacjentom komunikatu o wyjsciu
     // takze wypisz pacjentow, ktorzy byli w kolejce do rejestracji w momencie zamykania rejestracji
     int rozmiar_pozostalych = 0;
+    printGreen("[Rejestracja]: Pacjenci w kolejce do rejestracji w momencie zamykania rejestracji:\n");
     Wiadomosc *pozostali = wypiszPacjentowWKolejce(msg_id_rej, sem_id, &rozmiar_pozostalych);
     int i;
     
@@ -233,6 +243,7 @@ int main(int argc, char *argv[])
     
     for(i=0;i<rozmiar_pozostalych;i++){    
 
+        pozostali[i].mtype = pozostali[i].id_pacjent;
         // Wyslij pacjenta do domu
         if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
             perror_red("[Rejestracja]: Blad msgsnd - pacjent do domu\n");
@@ -259,13 +270,15 @@ int main(int argc, char *argv[])
 void uruchomOkienkoNr2()
 {
     // Uruchomienie dodatkowego procesu rejestracji (okienka nr 2)
+    
     pid_okienka2 = fork();
     if (pid_okienka2 == 0)
     {
+        signal(SIGTERM, handlerSIGUSR2);
         // Dziecko: Okienko nr 2
         printGreen("[Rejestracja - 2 okienko]: Otworzenie okienka ...\n");
         
-        while (1)
+        while (!zakoncz2okienko)
         {
             
             // Sprawdz, czy aktualny czas jest poza godzinami otwarcia
@@ -284,8 +297,7 @@ void uruchomOkienkoNr2()
                 if (errno != ENOMSG)
                 {
                     perror_red("[Rejestracja - 2 okienko]: Blad msgrcv\n");
-                    zatrzymajOkienkoNr2();
-                    exit(1);
+                    continue;
                 }
                 
                 #ifdef SLEEP
@@ -294,7 +306,7 @@ void uruchomOkienkoNr2()
                 
                 continue;
             }
-            
+
             int msg_id_pom; 
             switch(msg.id_lekarz){
                 // przypisanie zmiennej pomocniczej odpowiedniej wartosci id kolejki lekarza
@@ -311,7 +323,12 @@ void uruchomOkienkoNr2()
 
                 printYellow("[Rejestracja - 2 okienko]: Pacjent nr %d nie moze wejsc do lekarza o id %d - brak miejsc\n",msg.id_pacjent ,msg.id_lekarz);
                 
-                
+                msg.mtype = msg.id_pacjent;
+                // Wyslij pacjenta do domu
+                if (msgsnd(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                    perror_red("[Rejestracja - 2 okienko]: Blad msgsnd - pacjent do domu\n");
+                }
+
                 //_______________   WPISANIE NIEPRZYJETEGO PACJENTA DO RAPORTU  _____________________
                 
                 // Uzyskanie wylacznego dostepu do pliku raport poprzez semafor nr 4
@@ -334,14 +351,6 @@ void uruchomOkienkoNr2()
 
                 // _____________________________________________________________________________________
                 
-                
-                
-                msg.mtype = msg.id_pacjent;
-                
-                // Wyslij pacjenta do domu
-                if (msgsnd(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-                    perror_red("[Rejestracja - 2 okienko]: Blad msgsnd - pacjent do domu\n");
-                }
                 signalSemafor(sem_id, 3);   // informuje o mozliwosci dzialania na tablicy przyjec
                 continue;
             }
@@ -350,7 +359,6 @@ void uruchomOkienkoNr2()
             printGreen("[Rejestracja - 2 okienko]: Zarejestrowano pacjenta nr %d do lekarza: %d\n", msg.id_pacjent, msg.id_lekarz);
             msg.mtype = msg.vip; // ustalenie priorytetu przyjecia pacjenta
             // Wyslij pacjenta do lekarza
-            
             
             errno = 0;
             if ((msgsnd(msg_id_pom, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) || zwrocObecnyCzas() > Tk) {
@@ -365,7 +373,7 @@ void uruchomOkienkoNr2()
                 signalSemafor(sem_id, 3);   // informuje o mozliwosci dzialania na tablicy przyjec
                 continue;
             }
-            
+
             ++pamiec_wspoldzielona[msg.id_lekarz];   // zwieksz +1 liczbe przyjec do lekarza o podanym id
             ++pamiec_wspoldzielona[0]; // zwieksz glowny licznik przyjec
             printGreen("[Rejestracja 2 okno]: OBECNY LICZNIK PRZYJEC LEKARZA %d PO INKREMENTACJI: %d\n", msg.id_lekarz, pamiec_wspoldzielona[msg.id_lekarz]);
@@ -373,14 +381,25 @@ void uruchomOkienkoNr2()
             
             waitSemafor(sem_id, 6, 0);
             if((pamiec_wspoldzielona[0] >= limit_pacjentow) && (valueSemafor(sem_id, 5) == 1)){
+ 
                 waitSemafor(sem_id, 5, 0);
                 printYellow("Wyczerpano limit przyjec na ten dzien, zablokowano wejscie pacjentow do budynku\n");
-            }
-            signalSemafor(sem_id, 6);
-            
-    
-            signalSemafor(sem_id, 3);   // informuje o mozliwosci dzialania na tablicy przyjec
 
+                odeslijPacjentowPrzekroczenieLimitu(2);
+                odeslano_pacjentow_po_osiagnieciu_limitu2 = 1;
+                zakoncz2okienko = 1;
+                kill(getppid(), SIGUSR2);
+            }
+
+            else if((valueSemafor(sem_id, 5) == 0) && odeslano_pacjentow_po_osiagnieciu_limitu2 == 0){
+                odeslijPacjentowPrzekroczenieLimitu(2);
+                odeslano_pacjentow_po_osiagnieciu_limitu2 = 1;
+                zakoncz2okienko = 1;
+                kill(getppid(), SIGUSR2);
+            }
+            
+            signalSemafor(sem_id, 6);
+            signalSemafor(sem_id, 3); 
 
             #ifdef SLEEP
             sleep(2); // symulacja procesu rejestracji
@@ -395,15 +414,26 @@ void uruchomOkienkoNr2()
     }
 }
 void zatrzymajOkienkoNr2()
-{
+{        
     // Jesli proces okienka nr 2 istnieje, wyslij do niego sygnal zakonczenia
     if (pid_okienka2 != -1)
     {
         printYellow("[Rejestracja]: Zatrzymywanie okienka nr 2...\n");
         kill(pid_okienka2, SIGTERM); // Wyslac sygnal SIGTERM do procesu okienka nr 2 (zakonczenie)
+        printMagenta("ZAKONCZ PRZED WAIT\n");
         waitpid(pid_okienka2, NULL, 0); // Czekaj na zakonczenie procesu
+        printMagenta("ZAKONCZ PO WAIT\n");
         pid_okienka2 = -1;  // pomaga w uruchamianiu okienka w glownej petli
         //mowiac scislej zapobiega kilkukrotnemu uruchomieniu okienka nr2 naraz
+    } else {
+        // Jesli proces okienka nr 2 już nie istnieje, spróbuj usunąć potencjalny proces zombie
+        waitpid(pid_okienka2, NULL, WNOHANG); // Czekaj na zakończenie procesu, ale bez zawieszania
+        pid_okienka2 = -1;
     }
-    
+
+}
+
+void handlerSIGUSR2(int signum){
+    zakoncz2okienko = 1;
+    return;
 }

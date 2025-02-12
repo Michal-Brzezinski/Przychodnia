@@ -44,6 +44,8 @@ Pacjent pacjent; //globalna zmienna do ulatiwenia obslugi SIGUSR2
 int sem_id;
 volatile sig_atomic_t sygnal2 = 0;
 
+void handlerSIGTERM(int signum);
+
 void inicjalizujPacjenta(Pacjent *pacjent){
 
     pacjent->id_pacjent = getpid(); // za ID pacjenta bedzie sluzyc PID procesu, ktory go wywoluje

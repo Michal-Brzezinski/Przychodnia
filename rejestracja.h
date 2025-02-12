@@ -77,9 +77,16 @@ int Tp, Tk; // czas poczatkowy i czas koncowy (czas dzialania rejestracji)
 
 int building_max;
 
+// flaga, ktora pozwoli na odeslanie pacjentow, ktorzy w momencie osiagniecia limitu czekali w kolejce rejestracji
+int odeslano_pacjentow_po_osiagnieciu_limitu1 = 0;  //okienko 1
+int odeslano_pacjentow_po_osiagnieciu_limitu2 = 0;  //okienko 2
+
+sig_atomic_t zakoncz2okienko = 0;
+
 // funkcje potrzebne do obslugi rejestracji
 
 void uruchomOkienkoNr2();
+void handlerSIGUSR2(int signum);
 void zatrzymajOkienkoNr2();
 
 //  Wersja funkcji dla rejestracji - rozni sie nieznacznie od tej w lekarz.h
@@ -98,8 +105,6 @@ Wiadomosc *wypiszPacjentowWKolejce(int msg_id, int semID, int *rozmiar_kolejki) 
         exit(1);
     }
     
-    print("Pacjenci w kolejce do rejestracji w momencie zamykania rejestracji:\n");
-    
     int i=0; // zmienna do iteracji
     while (msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT) != -1) {
         print("Pacjent nr %d, wiek: %d, vip: %d\n", msg.id_pacjent, msg.wiek, msg.vip);
@@ -111,4 +116,24 @@ Wiadomosc *wypiszPacjentowWKolejce(int msg_id, int semID, int *rozmiar_kolejki) 
         perror_red("[wypiszPacjentowWKolejceRejestracji]: Blad msgrcv\n");
     }
     return pacjenci_po_zamknieciu;
+}
+
+void odeslijPacjentowPrzekroczenieLimitu(int nr_okienka){
+
+    int rozmiar_pozostalych = 0;
+    printGreen("[Rejestracja - %d okienko]: W momencie przekroczenia limitu przyjec w kolejce do rejestracji stali:\n", nr_okienka);
+    Wiadomosc *pozostali = wypiszPacjentowWKolejce(msg_id_rej, sem_id, &rozmiar_pozostalych);
+    int i;
+
+    for(i=0;i<rozmiar_pozostalych;i++){      
+        // Wyslij pacjenta do domu
+        pozostali[i].mtype = pozostali[i].id_pacjent;
+        if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+            printYellow("[Rejestracja]: Blad msgsnd dla PID %d\n", pozostali[i].id_pacjent);
+            //perror_red("[Rejestracja]: Blad msgsnd - pacjent do domu\n");
+        } 
+    }
+    
+    printGreen("[Rejestracja - %d okienko]: Odeslano pacjentow oczekujacych na przyjecie po osiagnieciu limitu przyjec\n", nr_okienka);
+    free(pozostali);
 }

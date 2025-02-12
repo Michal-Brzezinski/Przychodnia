@@ -39,11 +39,11 @@ GENEROWANIA PROCESOW POTOMNYCH - LEKARZY, PACJENTOW I REJESTRACJI
 
 
 // Dane do moderowania pracy programu
-const static int max_generate = 5000; // maksymalna liczba procesow pacjentow do wygenerowania
-int limit_pacjentow = 500; // maksymalna liczba pacjentow przyjetych przez wszystkich lekarzy
-const static char *building_max = "600";  //maksymalna liczba pacjentow w budynku
-const static char *Tp = "08:02";
-const static char *Tk = "19:23";
+const static int max_generate = 500; // maksymalna liczba procesow pacjentow do wygenerowania
+int limit_pacjentow = 300; // maksymalna liczba pacjentow przyjetych przez wszystkich lekarzy
+const static char *building_max = "100";  //maksymalna liczba pacjentow w budynku
+const static char *Tp = "07:23";
+const static char *Tk = "14:50";
 // #define SLEEP // zakomentowac, jesli nie chcemy sleepow w generowaniu pacjentow
 
 // struktura pamieci wspoldzielonej

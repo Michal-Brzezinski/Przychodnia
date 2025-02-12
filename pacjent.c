@@ -18,6 +18,8 @@ void obsluga_USR2(int sig);
 
 int main(){
     
+
+    signal(SIGTERM, handlerSIGTERM);
     // Obsluga sygnalu SIGINT
     struct sigaction sa;
     sa.sa_handler = obsluga_SIGINT;
@@ -87,6 +89,9 @@ int main(){
             printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku pod opieka\n",msg.id_pacjent, msg.wiek, msg.vip);
             pacjent.czy_wszedl = 1; // ustawiam paramter pacjenta, ktory mowi, ze pacjent juz wszedl do budynku, wiec musi wyjsc w przyszlosci
         }
+        else signalSemafor(sem_id, 0);
+        // Jezeli sygnal2 != 0, zwalniamy semafor wejscia, by nie blokowac dalszych operacji
+        
     }
     else signalSemafor(sem_id, 0); // jezeli nie udalo sie wejsc to zwolnij semafor dla innych na przyszlosc
 
@@ -102,36 +107,34 @@ int main(){
     waitSemafor(sem_id, 6, 0);
     if((valueSemafor(sem_id, 2) == 1) && (valueSemafor(sem_id, 5) == 1 && sygnal2 == 0)){
         signalSemafor(sem_id, 6);
-        if(pacjent.wiek >= 18)
-        printBlue("[Pacjent]: Pacjent %d czeka w kolejce na rejestracje do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
-        else
-        printBlue("[Pacjent]: Pacjent %d czeka z opiekunem w kolejce na rejestracje do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
-            
-        // Wyslij wiadomosc do rejestracji
+        
         if(sygnal2 == 0){
+            if(pacjent.wiek >= 18)
+            printBlue("[Pacjent]: Pacjent %d czeka w kolejce na rejestracje do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
+            else
+            printBlue("[Pacjent]: Pacjent %d czeka z opiekunem w kolejce na rejestracje do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
+                
+            // Wyslij wiadomosc do rejestracji
+        
             if (msgsnd(msg_id_rej, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
                 perror_red("[Pacjent]: Blad msgsnd - pacjent\n");
                 exit(1);
             }
         
-                Wiadomosc msg1;
-            if (msgrcv(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), msg.id_pacjent, 0) == -1)
+            if (msgrcv(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), msg.id_pacjent, 0) == -1)
             {
                 // Pacjent czeka na potwierdzenie, ze moze wyjsc
                 perror_red("[Pacjent]: Blad msgrcv\n");
                 exit(1);
             }
+
         }
     } 
     else signalSemafor(sem_id, 6);
     
-    waitSemafor(sem_id, 6, 0);
-    if(valueSemafor(sem_id, 5) == 1)   signalSemafor(sem_id, 0);    // zwolnienie semafora wejscia do budynku
-    signalSemafor(sem_id, 6);
-
-    
     if(pacjent.czy_wszedl == 1){
         // jezeli pacjent wszedl do budynku to musi tez z niego wyjsc
+        signalSemafor(sem_id, 0);
         if(pacjent.wiek >= 18)
         printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedl z budynku\n",msg.id_pacjent, msg.wiek, msg.vip);
         else
@@ -140,8 +143,10 @@ int main(){
 
     if (pacjent.wiek < 18) {
         // Sygnalizuj dziecku zakonczenie
-        sem_post(&opiekun_semafor);
         zakoncz_program = 1;
+        sem_post(&opiekun_semafor);
+        sem_post(&opiekun_semafor);
+
         // Oczekiwanie na zakonczenie pracy watku dziecka
         
         int przylacz_dziecko=pthread_join(id_dziecko,NULL);
@@ -162,8 +167,6 @@ int main(){
 
 void *dziecko(void* _wat){
 
-    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-    // pozwala na anulowanie watku w dowolnym momencie (asynchronicznie)
 
     int *pid = (int *)_wat;
     printCyan("[Dziecko]: Watek dziecka nr %d sie bawi.\n", *pid);
@@ -184,20 +187,22 @@ void *dziecko(void* _wat){
 
 
 void obsluga_SIGINT(int sig) {
-
     // Ustawienie flagi zakonczenia
     zakoncz_program = 1;
 
-    // Odblokuj dziecko, jesli czeka na semaforze
+    // Odblokowanie dziecka, jeśli czeka na semaforze
     sem_post(&opiekun_semafor);
+    sem_post(&opiekun_semafor);  // Dodatkowe, aby miec pewnosc, ze dziecko dostanie sygnal
 
-    // Anulowanie i oczekiwanie na zakonczenie watku dziecka
-    pthread_cancel(id_dziecko);
-    pthread_join(id_dziecko, NULL);
+    // Czekanie na zakonczenie watku dziecka (jesli istnieje)
+    if (pacjent.wiek < 18) {
+        pthread_join(id_dziecko, NULL);
+    }
 
     // Zniszczenie semafora
     sem_destroy(&opiekun_semafor);
 
+    // Bezpieczne zakonczenie procesu
     exit(0);
 }
 
@@ -205,4 +210,9 @@ void obsluga_USR2(int sig){
 
     printRed("Pacjent %d otrzymal sygnal wyproszenia wszystkich pacjentow z budynku.\n", pacjent.id_pacjent);
     sygnal2 = 1;
+}
+
+void handlerSIGTERM(int signum){
+
+    printRed("PACJENT %d OTRZYMAL SYGNAL SIGTERM I ZAKONCZYL SWOJE DZIALANIE\n", pacjent.id_pacjent);
 }

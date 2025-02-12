@@ -93,7 +93,7 @@ int main(int argc, char *argv[]){
 
             // Jesli jeszcze nie wykonano wywolania i osiagnieto losowy moment
             if(!zakonczWywolanego && zwrocObecnyCzas() >= los_wyzwalacz) {
-                zakonczPraceLekarza(pid_lekarza);
+                //zakonczPraceLekarza(pid_lekarza);
                 zakonczWywolanego = 1;
                 printYellow("[Dyrektor]: Wyslano sygnal do Lekarza: %d\n", pid_lekarza);
             }
