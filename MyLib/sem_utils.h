@@ -8,6 +8,8 @@
 
 #include "utils.h"
 
+#define S 14             // ilosc semaforow w zbiorze
+
 int alokujSemafor(key_t klucz, int number, int flagi);
 void inicjalizujSemafor(int semID, int number, int val);
 void zwolnijSemafor(int semID);

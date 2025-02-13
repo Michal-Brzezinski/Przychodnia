@@ -1,7 +1,8 @@
 #include "lekarz.h"
 
-
-// #define SLEEP // zakomentowac, jesli nie chcemy sleepow w programie
+// ___________________________________________________________________
+// #define SLEEP // zakomentowac, jesli nie chcemy sleepow w programie  <-- DO TESTOW
+// ___________________________________________________________________
 
 int main(int argc, char *argv[])
 {

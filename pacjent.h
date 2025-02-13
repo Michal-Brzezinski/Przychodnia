@@ -18,7 +18,9 @@
 #include <semaphore.h> //semafory POSIX dla watkow
 #include <pthread.h>
 
-#define S 7 // ilosc semaforow w zbiorze
+#include "MyLib/msg_utils.h"
+#include "MyLib/sem_utils.h"
+#include "MyLib/utils.h"
 
 typedef struct {
     int id_pacjent; // numer pacjenta - pid

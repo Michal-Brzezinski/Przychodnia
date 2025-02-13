@@ -34,17 +34,15 @@ GENEROWANIA PROCESOW POTOMNYCH - LEKARZY, PACJENTOW I REJESTRACJI
 
 #define FIFO_DYREKTOR "fifo_dyrektor"   // nazwa kolejki fifo do przekazywania pidu lekarza dyrektorowi
 
-#define S 7             // ilosc semaforow w zbiorze - w razie potrzeby zwiekszyc
-#define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej
-
-
 // Dane do moderowania pracy programu
-const static int max_generate = 20; // maksymalna liczba procesow pacjentow do wygenerowania
-int limit_pacjentow = 5; // maksymalna liczba pacjentow przyjetych przez wszystkich lekarzy
-const static char *building_max = "3";  //maksymalna liczba pacjentow w budynku
+const static int max_generate = 300; // maksymalna liczba procesow pacjentow do wygenerowania
+int limit_pacjentow = 100; // maksymalna liczba pacjentow przyjetych przez wszystkich lekarzy
+const static char *building_max = "50";  //maksymalna liczba pacjentow w budynku
 const static char *Tp = "07:23";
-const static char *Tk = "15:23";
-// #define SLEEP // zakomentowac, jesli nie chcemy sleepow w generowaniu pacjentow
+const static char *Tk = "19:23";
+// ________________________________________________________________________________
+// #define SLEEP // zakomentowac, jesli nie chcemy sleepow w generowaniu pacjentow  <--- DO TESTOWANIA
+// ________________________________________________________________________________
 
 // struktura pamieci wspoldzielonej
 // pamiec_wspoldzielona[0] - wspolny licznik pacjentow DLA REJESTRACJI
@@ -141,32 +139,6 @@ int main()
     klucz_wejscia = generuj_klucz_ftok(".", 'A'); // do zbioru semaforow
     sem_id = alokujSemafor(klucz_wejscia, S, IPC_CREAT | IPC_EXCL | 0600);
 
-    shm_key = generuj_klucz_ftok(".", 'X');
-    shm_id = alokujPamiecWspoldzielona(shm_key, PAM_SIZE * sizeof(int), IPC_CREAT | IPC_EXCL | 0600);
-    pamiec_wspoldzielona = dolaczPamiecWspoldzielona(shm_id, 0);
-    memset(pamiec_wspoldzielona, 0, PAM_SIZE * sizeof(int)); // Inicjalizacja wszystkich elementow pamieci na 0
-
-    msg_key_rej = generuj_klucz_ftok(".", 'B');
-    msg_id_rej = alokujKolejkeKomunikatow(msg_key_rej, IPC_CREAT | IPC_EXCL | 0600);
-
-    klucz_wyjscia = generuj_klucz_ftok(".", 'W');
-    msg_id_wyjscie = alokujKolejkeKomunikatow(klucz_wyjscia, IPC_CREAT | IPC_EXCL | 0600);
-
-    msg_key_POZ = generuj_klucz_ftok(".", 1);
-    msg_id_POZ = alokujKolejkeKomunikatow(msg_key_POZ, IPC_CREAT | IPC_EXCL | 0600);
-
-    msg_key_KARDIO = generuj_klucz_ftok(".", 2);
-    msg_id_KARDIO = alokujKolejkeKomunikatow(msg_key_KARDIO, IPC_CREAT | IPC_EXCL | 0600);
-
-    msg_key_OKUL = generuj_klucz_ftok(".", 3);
-    msg_id_OKUL = alokujKolejkeKomunikatow(msg_key_OKUL, IPC_CREAT | IPC_EXCL | 0600);
-
-    msg_key_PED = generuj_klucz_ftok(".", 4);
-    msg_id_PED = alokujKolejkeKomunikatow(msg_key_PED, IPC_CREAT | IPC_EXCL | 0600);
-
-    msg_key_MP = generuj_klucz_ftok(".", 5);
-    msg_id_MP = alokujKolejkeKomunikatow(msg_key_MP, IPC_CREAT | IPC_EXCL | 0600);
-
     inicjalizujSemafor(sem_id, 0, atoi(building_max));                // semafor zainicjalizowany na maksymalna liczbe pacjentow w budynku
     inicjalizujSemafor(sem_id, 1, 0);                            // potrzebny, aby proces pacjenta czekal na potwierdzenie przyjecia
     inicjalizujSemafor(sem_id, 2, 0);                            // semafor mowiacy, ze rejestracja jest zamknieta
@@ -174,6 +146,46 @@ int main()
     inicjalizujSemafor(sem_id, 4, 1);                            // semafor do pracy z plikiem 
     inicjalizujSemafor(sem_id, 5, 0);                            // pomocniczy semafor - czy budynek jest otwarty - moze byc signalowany przez dyrektora
     inicjalizujSemafor(sem_id, 6, 1);                            // semafor do kontroli pracy nad semaforem 5
+    
+    shm_key = generuj_klucz_ftok(".", 'X');
+    shm_id = alokujPamiecWspoldzielona(shm_key, PAM_SIZE * sizeof(int), IPC_CREAT | IPC_EXCL | 0600);
+    pamiec_wspoldzielona = dolaczPamiecWspoldzielona(shm_id, 0);
+    memset(pamiec_wspoldzielona, 0, PAM_SIZE * sizeof(int)); // Inicjalizacja wszystkich elementow pamieci na 0
+
+    msg_key_rej = generuj_klucz_ftok(".", 'B');
+    msg_id_rej = alokujKolejkeKomunikatow(msg_key_rej, IPC_CREAT | IPC_EXCL | 0600);
+    // SEMAFOR DO RADZENIA SOBIE Z PRZEPELNIENIEM KOLEJKI REJESTRACJI
+    inicjalizujSemafor(sem_id, 7, MAX_KOMUNIKATOW); 
+
+    klucz_wyjscia = generuj_klucz_ftok(".", 'W');
+    msg_id_wyjscie = alokujKolejkeKomunikatow(klucz_wyjscia, IPC_CREAT | IPC_EXCL | 0600);
+    // SEMAFOR DO RADZENIA SOBIE Z PRZEPELNIENIEM KOLEJKI WYJSCIA PACJENTOW
+    inicjalizujSemafor(sem_id, 8, MAX_KOMUNIKATOW);
+
+    msg_key_POZ = generuj_klucz_ftok(".", 1);
+    msg_id_POZ = alokujKolejkeKomunikatow(msg_key_POZ, IPC_CREAT | IPC_EXCL | 0600);
+    // SEMAFOR DO RADZENIA SOBIE Z PRZEPELNIENIEM KOLEJKI LEKARZA POZ
+    inicjalizujSemafor(sem_id, 9, MAX_KOMUNIKATOW);
+
+    msg_key_KARDIO = generuj_klucz_ftok(".", 2);
+    msg_id_KARDIO = alokujKolejkeKomunikatow(msg_key_KARDIO, IPC_CREAT | IPC_EXCL | 0600);
+    // SEMAFOR DO RADZENIA SOBIE Z PRZEPELNIENIEM KOLEJKI LEKARZA KARDIOLOGA
+    inicjalizujSemafor(sem_id, 10, MAX_KOMUNIKATOW);
+
+    msg_key_OKUL = generuj_klucz_ftok(".", 3);
+    msg_id_OKUL = alokujKolejkeKomunikatow(msg_key_OKUL, IPC_CREAT | IPC_EXCL | 0600);
+    // SEMAFOR DO RADZENIA SOBIE Z PRZEPELNIENIEM KOLEJKI LEKARZA OKULISTY
+    inicjalizujSemafor(sem_id, 11, MAX_KOMUNIKATOW);
+
+    msg_key_PED = generuj_klucz_ftok(".", 4);
+    msg_id_PED = alokujKolejkeKomunikatow(msg_key_PED, IPC_CREAT | IPC_EXCL | 0600);
+    // SEMAFOR DO RADZENIA SOBIE Z PRZEPELNIENIEM KOLEJKI LEKARZA PEDIATRY
+    inicjalizujSemafor(sem_id, 12, MAX_KOMUNIKATOW);
+
+    msg_key_MP = generuj_klucz_ftok(".", 5);
+    msg_id_MP = alokujKolejkeKomunikatow(msg_key_MP, IPC_CREAT | IPC_EXCL | 0600);
+    // SEMAFOR DO RADZENIA SOBIE Z PRZEPELNIENIEM KOLEJKI LEKARZA MEDYCYNY PRACY
+    inicjalizujSemafor(sem_id, 13, MAX_KOMUNIKATOW);
                                                  
     char arg2[10];                                                        // arg2 to limit pacjentow dla wszystkich lekarzy - uzywany jako argument w execl
     sprintf(arg2, "%d", limit_pacjentow);                                 // Konwersja liczby na ciag znakow

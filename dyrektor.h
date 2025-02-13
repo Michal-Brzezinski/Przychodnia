@@ -12,7 +12,6 @@
 #include "MyLib/sem_utils.h"
 
 #define FIFO_DYREKTOR "fifo_dyrektor"   // nazwa kolejki fifo do przekazywania pidu lekarza dyrektorowi
-#define S 7             // ilosc semaforow w zbiorze - w razie potrzeby zwiekszyc
 
 void zakonczPraceLekarza(int pid_procesu);
 void nakarzWyjscPacjentom();

@@ -8,6 +8,8 @@
 
 #include "utils.h"
 
+#define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej
+
 int alokujPamiecWspoldzielona(key_t klucz, int rozmiar, int flagi);
 int *dolaczPamiecWspoldzielona(int shmID, int flagi);
 int odlaczPamiecWspoldzielona(int *pamiec);

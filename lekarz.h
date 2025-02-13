@@ -19,8 +19,6 @@
 #include "MyLib/msg_utils.h"
 #include "MyLib/sem_utils.h"
 #include "MyLib/shm_utils.h"
-#define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej
-#define S 7     //rozmiar zbioru semaforow
 
 // Definicja typu wyliczeniowego dla lekarzy
 enum lekarze{ 

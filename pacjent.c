@@ -1,11 +1,8 @@
-
-#include "MyLib/msg_utils.h"
-#include "MyLib/sem_utils.h"
-#include "MyLib/utils.h"
-
 #include "pacjent.h"
 
-// #define SLEEP // zakomentowac, jesli nie chcemy sleepow 
+// ___________________________________________________________________
+// #define SLEEP // zakomentowac, jesli nie chcemy sleepow w programie  <-- DO TESTOW
+// ___________________________________________________________________
 
 
 sem_t opiekun_semafor; // Semafor do synchronizacji watkow

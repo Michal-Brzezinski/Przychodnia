@@ -17,9 +17,6 @@
 #include "MyLib/msg_utils.h"
 #include "MyLib/utils.h"
 
-#define S 7 // Ilosc semaforow w zbiorze
-#define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej
-
 typedef struct {
     long mtype;       // Typ wiadomosci
     int id_pacjent;   // Numer pacjenta
