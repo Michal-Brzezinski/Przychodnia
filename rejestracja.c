@@ -154,6 +154,23 @@ int main(int argc, char *argv[])
             continue;
         }
 
+
+            //______________________________________________________________
+            waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku kontrolnego
+    
+            FILE *raport = fopen("raport", "a");
+            if (raport == NULL) {
+                perror_red("[Pacjent]: Blad otwarcia pliku raport\n");
+            } else {
+    
+                fprintf(raport, "1 OKNO: PACJENT %d ZAREJESTROWANY DO LEKARZA %d\n", msg.id_pacjent, msg.id_lekarz);
+                fflush(raport);
+                fclose(raport);
+            }
+            signalSemafor(sem_id, 4); 
+            //______________________________________________________________ 
+
+
         printGreen("[Rejestracja - 1 okienko]: Zarejestrowano pacjenta nr %d do lekarza: %d\n", msg.id_pacjent, msg.id_lekarz);
         msg.mtype = msg.vip; // ustalenie priorytetu przyjecia pacjenta
         // Wyslij pacjenta do lekarza
@@ -233,36 +250,43 @@ int main(int argc, char *argv[])
     // takze wypisz pacjentow, ktorzy byli w kolejce do rejestracji w momencie zamykania rejestracji
     int rozmiar_pozostalych = 0;
     printGreen("[Rejestracja]: Pacjenci w kolejce do rejestracji w momencie zamykania rejestracji:\n");
-    Wiadomosc *pozostali = wypiszPacjentowWKolejce(msg_id_rej, sem_id, &rozmiar_pozostalych);
+    Wiadomosc *pozostali = wypiszPacjentowWKolejce(msg_id_rej, &rozmiar_pozostalych);
     int i;
     
-    waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
-    FILE *raport = fopen("raport", "a");
-    if (raport == NULL) {
-        perror_red("[Rejestracja - 1 okienko]: Blad otwarcia pliku raport\n"); exit(1);}
-    
-    for(i=0;i<rozmiar_pozostalych;i++){    
+    if (pozostali != NULL) {
 
-        pozostali[i].mtype = pozostali[i].id_pacjent;
-        // Wyslij pacjenta do domu
-        if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-            perror_red("[Rejestracja]: Blad msgsnd - pacjent do domu\n");
-            continue;
+        waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
+        FILE *raport = fopen("raport", "a");
+        if (raport == NULL) {
+            perror_red("[Rejestracja - 1 okienko]: Blad otwarcia pliku raport\n"); 
+            signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
+            exit(1);
         }
+        if (rozmiar_pozostalych > 0) {
+            for(i=0;i<rozmiar_pozostalych;i++){    
 
-        time_t now = time(NULL);
-        struct tm *local = localtime(&now);
-        fprintf(raport, "[Rejestracja]: %02d:%02d:%02d - pacjent nr %d w kolejce po zakonczeniu rejestracji, skierowany od %s do id: %d\n",
-                local->tm_hour, local->tm_min, local->tm_sec,
-                pozostali[i].id_pacjent, pozostali[i].kto_skierowal, pozostali[i].id_lekarz);
-        fflush(raport);
+                pozostali[i].mtype = pozostali[i].id_pacjent;
+                // Wyslij pacjenta do domu
+                if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                    perror_red("[Rejestracja]: Blad msgsnd - pacjent do domu\n");
+                    continue;
+                }
+
+                time_t now = time(NULL);
+                struct tm *local = localtime(&now);
+                fprintf(raport, "[Rejestracja]: %02d:%02d:%02d - pacjent nr %d w kolejce po zakonczeniu rejestracji, skierowany od %s do id: %d\n",
+                        local->tm_hour, local->tm_min, local->tm_sec,
+                        pozostali[i].id_pacjent, pozostali[i].kto_skierowal, pozostali[i].id_lekarz);
+                fflush(raport);
+                
+            }
+        }
+        fclose(raport);
+        signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
         
+        free(pozostali);
+        pozostali = NULL; 
     }
-    fclose(raport);
-    signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
-
-    if (pozostali != NULL) 
-        free(pozostali); 
     
     return 0;
 }
@@ -356,6 +380,22 @@ void uruchomOkienkoNr2()
             }
 
 
+            //______________________________________________________________
+            waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku kontrolnego
+    
+            FILE *raport = fopen("raport", "a");
+            if (raport == NULL) {
+                perror_red("[Pacjent]: Blad otwarcia pliku raport\n");
+            } else {
+    
+                fprintf(raport, "2 OKNO: PACJENT %d ZAREJESTROWANY DO LEKARZA %d\n", msg.id_pacjent, msg.id_lekarz);
+                fflush(raport);
+                fclose(raport);
+            }
+            signalSemafor(sem_id, 4); 
+            //______________________________________________________________ 
+
+
             printGreen("[Rejestracja - 2 okienko]: Zarejestrowano pacjenta nr %d do lekarza: %d\n", msg.id_pacjent, msg.id_lekarz);
             msg.mtype = msg.vip; // ustalenie priorytetu przyjecia pacjenta
             // Wyslij pacjenta do lekarza
@@ -420,9 +460,7 @@ void zatrzymajOkienkoNr2()
     {
         printYellow("[Rejestracja]: Zatrzymywanie okienka nr 2...\n");
         kill(pid_okienka2, SIGTERM); // Wyslac sygnal SIGTERM do procesu okienka nr 2 (zakonczenie)
-        printMagenta("ZAKONCZ PRZED WAIT\n");
         waitpid(pid_okienka2, NULL, 0); // Czekaj na zakonczenie procesu
-        printMagenta("ZAKONCZ PO WAIT\n");
         pid_okienka2 = -1;  // pomaga w uruchamianiu okienka w glownej petli
         //mowiac scislej zapobiega kilkukrotnemu uruchomieniu okienka nr2 naraz
     } else {

@@ -73,6 +73,22 @@ int main(){
     
     // _______________________________  DOSTANIE SIE DO BUDYNKU     _______________________________________
     
+
+        //______________________________________________________________
+        waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku kontrolnego
+        
+        FILE *raport = fopen("raport", "a");
+        if (raport == NULL) {
+            perror_red("[Pacjent]: Blad otwarcia pliku raport\n");
+        } else {
+
+            fprintf(raport, "PACJENT %d ROZPOCZAL SWOJE DZIALANIE\n", pacjent.id_pacjent);
+            fflush(raport);
+            fclose(raport);
+        }
+        signalSemafor(sem_id, 4); 
+        //______________________________________________________________ 
+
     if(pacjent.wiek >= 18)
     printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d probuje wejsc do budynku\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
     else
@@ -88,6 +104,23 @@ int main(){
             else
             printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku pod opieka\n",msg.id_pacjent, msg.wiek, msg.vip);
             pacjent.czy_wszedl = 1; // ustawiam paramter pacjenta, ktory mowi, ze pacjent juz wszedl do budynku, wiec musi wyjsc w przyszlosci
+        
+        
+                //______________________________________________________________
+                waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku kontrolnego
+        
+                raport = fopen("raport", "a");
+                if (raport == NULL) {
+                    perror_red("[Pacjent]: Blad otwarcia pliku raport\n");
+                } else {
+        
+                    fprintf(raport, "PACJENT %d WSZEDL DO BUDYNKU\n", pacjent.id_pacjent);
+                    fflush(raport);
+                    fclose(raport);
+                }
+                signalSemafor(sem_id, 4); 
+                //______________________________________________________________ 
+        
         }
         else signalSemafor(sem_id, 0);
         // Jezeli sygnal2 != 0, zwalniamy semafor wejscia, by nie blokowac dalszych operacji
@@ -107,7 +140,7 @@ int main(){
     waitSemafor(sem_id, 6, 0);
     if((valueSemafor(sem_id, 2) == 1) && (valueSemafor(sem_id, 5) == 1 && sygnal2 == 0)){
         signalSemafor(sem_id, 6);
-        
+
         if(sygnal2 == 0){
             if(pacjent.wiek >= 18)
             printBlue("[Pacjent]: Pacjent %d czeka w kolejce na rejestracje do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
@@ -121,6 +154,21 @@ int main(){
                 exit(1);
             }
         
+        //______________________________________________________________
+        waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku kontrolnego
+        
+        raport = fopen("raport", "a");
+        if (raport == NULL) {
+            perror_red("[Pacjent]: Blad otwarcia pliku raport\n");
+        } else {
+
+            fprintf(raport, "PACJENT %d WYSLAL WIADOMOSC DO REJESTRACJI\n", pacjent.id_pacjent);
+            fflush(raport);
+            fclose(raport);
+        }
+        signalSemafor(sem_id, 4); 
+        //______________________________________________________________ 
+
             if (msgrcv(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), msg.id_pacjent, 0) == -1)
             {
                 // Pacjent czeka na potwierdzenie, ze moze wyjsc
@@ -129,6 +177,21 @@ int main(){
             }
 
         }
+
+                //______________________________________________________________
+                waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku kontrolnego
+        
+                raport = fopen("raport", "a");
+                if (raport == NULL) {
+                    perror_red("[Pacjent]: Blad otwarcia pliku raport\n");
+                } else {
+        
+                    fprintf(raport, "PACJENT %d ODEBRAL WIADOMOSC O WYJSCIU\n", pacjent.id_pacjent);
+                    fflush(raport);
+                    fclose(raport);
+                }
+                signalSemafor(sem_id, 4); 
+                //______________________________________________________________ 
     } 
     else signalSemafor(sem_id, 6);
     
@@ -139,6 +202,22 @@ int main(){
         printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedl z budynku\n",msg.id_pacjent, msg.wiek, msg.vip);
         else
         printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedl z budynku wraz z opiekunem\n",msg.id_pacjent, msg.wiek, msg.vip);
+    
+            //______________________________________________________________
+            waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku kontrolnego
+        
+            raport = fopen("raport", "a");
+            if (raport == NULL) {
+                perror_red("[Pacjent]: Blad otwarcia pliku raport\n");
+            } else {
+    
+                fprintf(raport, "PACJENT %d WYSZEDL Z BUDYNKU\n", pacjent.id_pacjent);
+                fflush(raport);
+                fclose(raport);
+            }
+            signalSemafor(sem_id, 4); 
+            //______________________________________________________________ 
+    
     }
 
     if (pacjent.wiek < 18) {
@@ -161,6 +240,22 @@ int main(){
     
     if(pacjent.czy_wszedl == 0)
     printBlue("[Pacjent]: Pacjent nr %d nie dal rady wejsc do budynku i zakonczyl dzialanie\n", pacjent.id_pacjent);
+
+
+        //______________________________________________________________
+        waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku kontrolnego
+        
+        raport = fopen("raport", "a");
+        if (raport == NULL) {
+            perror_red("[Pacjent]: Blad otwarcia pliku raport\n");
+        } else {
+
+            fprintf(raport, "PACJENT %d ZAKONCZYL SWOJE DZIALANIE\n", pacjent.id_pacjent);
+            fflush(raport);
+            fclose(raport);
+        }
+        signalSemafor(sem_id, 4); 
+        //______________________________________________________________ 
 
     return 0;
 }

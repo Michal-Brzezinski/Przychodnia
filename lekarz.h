@@ -113,60 +113,83 @@ void inicjalizuj_lekarza(Lekarz* lekarz, int id_lekarz, int limit_pacjentow){
 
 }
 
-Wiadomosc *wypiszPacjentowWKolejce(int msg_id, int *rozmiar_kolejki, Lekarz *lekarz) {
-    Wiadomosc msg;
-    Wiadomosc *pacjenci_po_zamknieciu;
-    int rozmiar = policzProcesy(msg_id);
-    
-    if (rozmiar == 0) {
-        // W RAZIE PUSTEJ KOLEJKI NA KONIEC NIE ROB NIC
-        *rozmiar_kolejki = 0;
-        return NULL;
-    }
-
-    *rozmiar_kolejki = rozmiar; // dzieki wskaznikowi mozna przeniesc rozmiar kolejki poza funkcje 
-    pacjenci_po_zamknieciu = (Wiadomosc *)(malloc(rozmiar * sizeof(Wiadomosc)));
-    if(pacjenci_po_zamknieciu == NULL)
-    {
-        perror_red("[wypiszPacjentowWKolejceLekarza]: malloc error\n");
+Wiadomosc* wypiszPacjentowWKolejce(int msg_id, int *rozmiar_kolejki, Lekarz *lekarz) {
+    int capacity = 500; // Poczatkowa pojemnosc tablicy
+    int size = 0;
+    Wiadomosc *pacjenci = malloc(capacity * sizeof(Wiadomosc));
+    if (pacjenci == NULL) {
+        perror_red("[wypiszPacjentowWKolejce]: malloc error\n");
         exit(1);
     }
-    
-    int i=0; // zmienna do iteracji po tablicy zaalokowanej
-    while (msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT) != -1) {
-        
-        print("[%s]: Pacjent nr %d, wiek: %d, vip: %d\n",lekarz->nazwa, msg.id_pacjent, msg.wiek, msg.vip);
-        pacjenci_po_zamknieciu[i] = msg;
-        i++;
-    }
-    if (errno != ENOMSG) {
-        perror_red("[wypiszPacjentowWKolejceLekarza]: Blad msgrcv\n");
-    }
 
-    return pacjenci_po_zamknieciu;
-}
+    Wiadomosc msg;
+    while (1) {
+        errno = 0;
+        int ret = msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT);
+        if (ret != -1) {
+            // Otrzymano wiadomosc
+            print("[%s]: Pacjent nr %d, wiek: %d, vip: %d\n",
+                  lekarz->nazwa, msg.id_pacjent, msg.wiek, msg.vip);
 
+            // Sprawdzenie, czy potrzebna jest realokacja tablicy
+            if (size >= capacity) {
+                capacity *= 2;
+                Wiadomosc *temp = realloc(pacjenci, capacity * sizeof(Wiadomosc));
+                if (temp == NULL) {
+                    perror_red("[wypiszPacjentowWKolejce]: realloc error\n");
+                    free(pacjenci);
+                    exit(1);
+                }
+                pacjenci = temp;
+            }
 
-void wypiszIOdeslijPacjentow(Lekarz *lekarz, int msg_id){
-
-    int rozmiar_pozostalych = 0;
-    Wiadomosc *pozostali = wypiszPacjentowWKolejce(msg_id, &rozmiar_pozostalych, lekarz);
-    int i; // zmienna iteracyjna
-
-    // wysylanie pozostalym pacjentom komunikatu o wyjsciu
-    for(i=0;i<rozmiar_pozostalych;i++){    
-
-        // Wyslij pacjenta do domu
-        if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-            
-            //if(errno != )
-            perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
-            continue;
+            pacjenci[size++] = msg;
+        } else {
+            if (errno == ENOMSG) {
+                // Brak wiadomosci w kolejce
+                break;
+            } else {
+                perror_red("[wypiszPacjentowWKolejce]: Blad msgrcv\n");
+                free(pacjenci);
+                exit(1);
+            }
         }
     }
-    if (pozostali != NULL) {
-        free(pozostali); 
-        // zwalniam, poniewaz wypisz pacjentow dynamicznie alokuje tablice pidow, ktora trzeba zwolnic
+
+    *rozmiar_kolejki = size;
+
+    // Dopasowanie rozmiaru tablicy do faktycznej liczby pacjentow
+    if (size == 0) {
+        free(pacjenci);
+        pacjenci = NULL;
+    } else {
+        Wiadomosc *temp = realloc(pacjenci, size * sizeof(Wiadomosc));
+        if (temp == NULL) {
+            perror_red("[wypiszPacjentowWKolejce]: realloc error\n");
+            free(pacjenci);
+            exit(1);
+        }
+        pacjenci = temp;
     }
 
+    return pacjenci;
 }
+
+
+void wypiszIOdeslijPacjentow(Lekarz *lekarz, int msg_id) {
+    int rozmiar_pozostalych = 0;
+    Wiadomosc *pozostali = wypiszPacjentowWKolejce(msg_id, &rozmiar_pozostalych, lekarz);
+
+    if (pozostali != NULL) {
+        // Wysylanie pozostalym pacjentom komunikatu o wyjsciu
+        for (int i = 0; i < rozmiar_pozostalych; i++) {
+            pozostali[i].mtype = pozostali[i].id_pacjent;
+            if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
+                continue;
+            }
+        }
+        free(pozostali); // Zwalniam pamiec
+    }
+}
+

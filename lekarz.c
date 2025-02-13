@@ -139,18 +139,18 @@ void czynnosci_lekarskie(Lekarz *lekarz){
             }
 
         // Sprawdz, czy aktualny czas jest poza godzinami otwarcia
-        if (current_time > Tk)
-        {
+        if (current_time > Tk) {
             printMagenta("[%s]: Przychodnia jest zamknieta. Lekarz o id: %d konczy prace.\n", lekarz->nazwa, lekarz->id_lekarz);
             printMagenta("[%s]: Po zamknieciu przychodni obsluzono pacjentow:\n", lekarz->nazwa);
             wypiszIOdeslijPacjentow(lekarz, msg_id_lekarz);
-            
+        
             #ifdef SLEEP
             sleep(8);
             #endif
-
-            break; // Wyjscie z petli, gdy czas jest poza godzinami otwarcia
+        
+            break; // Wyjscie z petli gdyczas dzialania sie konczy
         }
+        
 
         if(zakoncz_program == 0 && zwrocObecnyCzas() < Tk){
             if (msgrcv(msg_id_lekarz, &msg, sizeof(Wiadomosc) - sizeof(long), -2, IPC_NOWAIT) == -1)        {
@@ -169,6 +169,23 @@ void czynnosci_lekarskie(Lekarz *lekarz){
         
             else{
                 // Gdy zostanie odczytany komunikat wykonaj czynnosci:
+
+
+            //______________________________________________________________
+            waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku kontrolnego
+    
+            FILE *raport = fopen("raport", "a");
+            if (raport == NULL) {
+                perror_red("[Pacjent]: Blad otwarcia pliku raport\n");
+            } else {
+    
+                fprintf(raport, "PACJENT %d PRZYJETY DO LEKARZA %d\n", msg.id_pacjent, msg.id_lekarz);
+                fflush(raport);
+                fclose(raport);
+            }
+            signalSemafor(sem_id, 4); 
+            //______________________________________________________________ 
+
 
                 printMagenta("[%s]: Lekarz o id %d przyjal pacjenta %d o priorytecie: %d\n",lekarz->nazwa, lekarz->id_lekarz, msg.id_pacjent, msg.vip);
                 lekarz->licznik_pacjentow++;
@@ -237,40 +254,42 @@ void czynnosci_lekarskie(Lekarz *lekarz){
 
     }
 
-    if(koniec_pracy == 1){
-        // czynnosci jakie wykonuje lekarz po otrzymaniu sygnalu od Dyrektora
+    if (koniec_pracy == 1) {
         
-        printMagenta("[%s]: Przyjeto sygnal od Dyrektora. Lekarz konczy prace.\n Nieobsluzeni pacjenci do raportu:\n", lekarz->nazwa);
+        printMagenta("[%s]: Przyjeto sygnal od Dyrektora. Lekarz konczy prace.\nNieobsluzeni pacjenci do raportu:\n", lekarz->nazwa);
         int kolejka_size;
         Wiadomosc *pozostali = wypiszPacjentowWKolejce(msg_id_lekarz, &kolejka_size, lekarz);
-
-
-        waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
-        FILE *raport = fopen("raport", "a");
-        if (raport == NULL) {
-        perror_red("[Lekarz]: Blad otwarcia pliku raport\n"); exit(1);}
-        int j;
-        for(j = 0; j < kolejka_size; j++){
-            pozostali[j].mtype = pozostali[j].id_pacjent;
-            if (msgsnd(msg_id_wyjscie, &pozostali[j], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-            perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
-            continue;
+    
+        if(pozostali  != NULL){
+            waitSemafor(sem_id, 4, 0);  // blokada dostępu do pliku "raport"
+            FILE *raport = fopen("raport", "a");
+            if (raport == NULL) {
+                perror_red("[Lekarz]: Blad otwarcia pliku raport\n");
+                exit(1);
             }
-
-            time_t now = time(NULL);
-            struct tm *local = localtime(&now);
-            fprintf(raport, "[%s]: %02d:%02d:%02d - pacjent nr %d w kolejce lekarza po Sygnale dyrektora, skierowany od %s do id: %d\n",
-            lekarz->nazwa, local->tm_hour, local->tm_min, local->tm_sec,
-            pozostali[j].id_pacjent, pozostali[j].kto_skierowal, pozostali[j].id_lekarz);
-            fflush(raport);
+        
+            int j;
+            for (j = 0; j < kolejka_size; j++) {
+                pozostali[j].mtype = pozostali[j].id_pacjent;
+                if (msgsnd(msg_id_wyjscie, &pozostali[j], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                    perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
+                    continue;
+                }
+        
+                time_t now = time(NULL);
+                struct tm *local = localtime(&now);
+                fprintf(raport, "[%s]: %02d:%02d:%02d - pacjent nr %d w kolejce lekarza po sygnale dyrektora, skierowany od %s do id: %d\n",
+                        lekarz->nazwa, local->tm_hour, local->tm_min, local->tm_sec,
+                        pozostali[j].id_pacjent, pozostali[j].kto_skierowal, pozostali[j].id_lekarz);
+                fflush(raport);
+            }
+            fclose(raport);
+            signalSemafor(sem_id, 4);
+        
+            if (pozostali != NULL) {
+                free(pozostali); // zwalniam dynamicznie alokowana pamiec
+            }
         }
-        fclose(raport);
-        signalSemafor(sem_id, 4);
-        if (pozostali != NULL) {
-        free(pozostali); 
-        // zwalniam, poniewaz wypisz pacjentow dynamicznie alokuje tablice pidow, ktora trzeba zwolnic
-        }
-
     }
     
     return;

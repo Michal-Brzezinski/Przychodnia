@@ -90,50 +90,98 @@ void handlerSIGUSR2(int signum);
 void zatrzymajOkienkoNr2();
 
 //  Wersja funkcji dla rejestracji - rozni sie nieznacznie od tej w lekarz.h
-Wiadomosc *wypiszPacjentowWKolejce(int msg_id, int semID, int *rozmiar_kolejki) {
-// Funkcja w
+Wiadomosc* wypiszPacjentowWKolejce(int msg_id, int *rozmiar_kolejki) {
     
-    Wiadomosc msg;
-    Wiadomosc *pacjenci_po_zamknieciu;
-    int rozmiar = policzProcesy(msg_id);
-    *rozmiar_kolejki = rozmiar; // dzieki wskaznikowi mozna przeniesc rozmiar kolejki poza funkcje 
-    
-    pacjenci_po_zamknieciu = (Wiadomosc *)(malloc(rozmiar * sizeof(Wiadomosc)));
-    if(pacjenci_po_zamknieciu == NULL)
-    {
+    int size = 0;
+    int capacity = 500;
+    Wiadomosc *pacjenci_po_zamknieciu = malloc(capacity * sizeof(Wiadomosc));
+    if (pacjenci_po_zamknieciu == NULL) {
         perror_red("[wypiszPacjentowWKolejceRejestracji]: malloc error\n");
         exit(1);
     }
-    
-    int i=0; // zmienna do iteracji
-    while (msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT) != -1) {
-        print("Pacjent nr %d, wiek: %d, vip: %d\n", msg.id_pacjent, msg.wiek, msg.vip);
-        pacjenci_po_zamknieciu[i] = msg;
-        i++;
 
+    Wiadomosc msg;
+    while (1) {
+        errno = 0;
+        int ret = msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT);
+        if (ret != -1) {
+            // Otrzymano wiadomosc
+            print("Pacjent nr %d, wiek: %d, vip: %d\n", msg.id_pacjent, msg.wiek, msg.vip);
+
+            // Sprawdzenie, czy potrzebna jest realokacja tablicy
+            if (size >= capacity) {
+                capacity *= 2;
+                Wiadomosc *temp = realloc(pacjenci_po_zamknieciu, capacity * sizeof(Wiadomosc));
+                if (temp == NULL) {
+                    perror_red("[wypiszPacjentowWKolejceRejestracji]: realloc error\n");
+                    free(pacjenci_po_zamknieciu);
+                    exit(1);
+                }
+                pacjenci_po_zamknieciu = temp;
+            }
+
+            pacjenci_po_zamknieciu[size++] = msg;
+        } else {
+            if (errno == ENOMSG) {
+                // Brak wiadomosci konczy petle
+                break;
+            } else {
+                perror_red("[wypiszPacjentowWKolejceRejestracji]: Błąd msgrcv\n");
+                free(pacjenci_po_zamknieciu);
+                exit(1);
+            }
+        }
     }
-    if (errno != ENOMSG) {
-        perror_red("[wypiszPacjentowWKolejceRejestracji]: Blad msgrcv\n");
+
+    *rozmiar_kolejki = size;
+
+    // Dopasowanie rozmiaru tablicy do rzeczywistej liczby pacjentow
+    if (size == 0) {
+        free(pacjenci_po_zamknieciu);
+        pacjenci_po_zamknieciu = NULL;
+    } else {
+        Wiadomosc *temp = realloc(pacjenci_po_zamknieciu, size * sizeof(Wiadomosc));
+        if (temp == NULL) {
+            perror_red("[wypiszPacjentowWKolejceRejestracji]: realloc error\n");
+            free(pacjenci_po_zamknieciu);
+            exit(1);
+        }
+        pacjenci_po_zamknieciu = temp;
     }
+
     return pacjenci_po_zamknieciu;
 }
 
-void odeslijPacjentowPrzekroczenieLimitu(int nr_okienka){
 
+void odeslijPacjentowPrzekroczenieLimitu(int nr_okienka){
     int rozmiar_pozostalych = 0;
     printGreen("[Rejestracja - %d okienko]: W momencie przekroczenia limitu przyjec w kolejce do rejestracji stali:\n", nr_okienka);
-    Wiadomosc *pozostali = wypiszPacjentowWKolejce(msg_id_rej, sem_id, &rozmiar_pozostalych);
-    int i;
-
-    for(i=0;i<rozmiar_pozostalych;i++){      
-        // Wyslij pacjenta do domu
-        pozostali[i].mtype = pozostali[i].id_pacjent;
-        if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-            printYellow("[Rejestracja]: Blad msgsnd dla PID %d\n", pozostali[i].id_pacjent);
-            //perror_red("[Rejestracja]: Blad msgsnd - pacjent do domu\n");
-        } 
-    }
+    Wiadomosc *pozostali = wypiszPacjentowWKolejce(msg_id_rej, &rozmiar_pozostalych);
     
-    printGreen("[Rejestracja - %d okienko]: Odeslano pacjentow oczekujacych na przyjecie po osiagnieciu limitu przyjec\n", nr_okienka);
-    free(pozostali);
+    if (pozostali != NULL) {
+        waitSemafor(sem_id, 4, 0);  // blokada dostępu do pliku kontrolnego
+        FILE *raport = fopen("raport", "a");
+        if (raport != NULL) {
+            for (int i = 0; i < rozmiar_pozostalych; i++) {
+                // Wyślij pacjenta do domu
+                pozostali[i].mtype = pozostali[i].id_pacjent;
+                if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                    printYellow("[Rejestracja]: Blad msgsnd dla PID %d\n", pozostali[i].id_pacjent);
+                }
+                // Zapisz informację w raporcie
+                fprintf(raport, "PACJENT %d ODESLANY PO OSIAGNIECIU LIMITU %d\n", pozostali[i].id_pacjent, pozostali[i].id_lekarz);
+                fflush(raport);
+            }
+            fclose(raport);
+            signalSemafor(sem_id, 4);
+
+            printGreen("[Rejestracja - %d okienko]: Odeslano pacjentow oczekujacych na przyjecie po osiagnieciu limitu przyjec\n", nr_okienka);
+            free(pozostali);
+        } else {
+            perror_red("[Rejestracja]: Blad otwarcia pliku raport\n");
+            printRed("Nie odeslano pacjentow\n");
+            signalSemafor(sem_id, 4);
+            free(pozostali);
+        }
+    }
 }
