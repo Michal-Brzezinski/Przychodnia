@@ -50,6 +50,9 @@ key_t sem_key;
 key_t klucz_wyjscia;
 int msg_id_wyjscie;
 
+key_t msg_key_POZ_rej;       // klucz do kolejki dla pacjentow przekierowanych od POZ
+int msg_id_POZ_rej;       // id do kolejki dla pacjentow przekierowanych od POZ
+
 int shm_id; // id pamieci wspoldzielonej
 int *pamiec_wspoldzielona;
 key_t shm_key;        // klucz do pamieci wspoldzielonej
@@ -103,6 +106,8 @@ Wiadomosc* wypiszPacjentowWKolejce(int msg_id, int *rozmiar_kolejki) {
         int ret = msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT);
         if (ret != -1) {
             // Otrzymano wiadomosc
+            signalSemafor(sem_id, 7);   // zwieksz licznik miejsca w kolejce do rejestracji
+
             print("Pacjent nr %d, wiek: %d, vip: %d\n", msg.id_pacjent, msg.wiek, msg.vip);
 
             // Sprawdzenie, czy potrzebna jest realokacja tablicy
@@ -162,11 +167,15 @@ void odeslijPacjentowPrzekroczenieLimitu(int nr_okienka){
             for (int i = 0; i < rozmiar_pozostalych; i++) {
                 // Wyślij pacjenta do domu
                 pozostali[i].mtype = pozostali[i].id_pacjent;
+
+                waitSemafor(sem_id, 8, 0);  // czekaj az znajdzie sie miejsce w kolejce do wyjscia
                 if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
                     printYellow("[Rejestracja]: Blad msgsnd dla PID %d\n", pozostali[i].id_pacjent);
+                    signalSemafor(sem_id, 8); // zwieksz licznik miejsc w kolejce do wyjscia
+
                 }
                 // Zapisz informację w raporcie
-                fprintf(raport, "PACJENT %d ODESLANY PO OSIAGNIECIU LIMITU %d\n", pozostali[i].id_pacjent, pozostali[i].id_lekarz);
+                fprintf(raport, "Pacjent %d odeslany po osiagnieciu limitu %d\n", pozostali[i].id_pacjent, pozostali[i].id_lekarz);
                 fflush(raport);
             }
             fclose(raport);

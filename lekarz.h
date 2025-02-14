@@ -57,8 +57,8 @@ volatile sig_atomic_t zakoncz_program = 0;  // obsluga SIGINT
 
 volatile sig_atomic_t koniec_pracy = 0; // potrzebne do obslugi sygnalu dyrektora - zakonczenie pracy
 
-int sem_id, msg_id_lekarz, msg_id_rejestracja;
-key_t klucz_sem, klucz_kolejki_lekarza, klucz_kolejki_rejestracji;
+int sem_id, msg_id_lekarz;
+key_t klucz_sem, klucz_kolejki_lekarza;
 
 key_t klucz_wyjscia;
 int msg_id_wyjscie;
@@ -126,6 +126,8 @@ Wiadomosc* wypiszPacjentowWKolejce(int msg_id, int *rozmiar_kolejki, Lekarz *lek
         int ret = msgrcv(msg_id, &msg, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT);
         if (ret != -1) {
             // Otrzymano wiadomosc
+            signalSemafor(sem_id, 8 + lekarz->id_lekarz);   // zwieksz licznik miejsc w kolejce do lekarza
+
             print("[%s]: Pacjent nr %d, wiek: %d, vip: %d\n",
                   lekarz->nazwa, msg.id_pacjent, msg.wiek, msg.vip);
 
@@ -182,8 +184,12 @@ void wypiszIOdeslijPacjentow(Lekarz *lekarz, int msg_id) {
         // Wysylanie pozostalym pacjentom komunikatu o wyjsciu
         for (int i = 0; i < rozmiar_pozostalych; i++) {
             pozostali[i].mtype = pozostali[i].id_pacjent;
+            
+            waitSemafor(sem_id, 8, 0);  // czekaj az znajdzie sie miejsce w kolejce do wyjscia
             if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
                 perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
+                signalSemafor(sem_id, 8);
+                
                 continue;
             }
         }

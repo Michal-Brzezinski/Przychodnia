@@ -1,22 +1,24 @@
 #include "pacjent.h"
 
 // ___________________________________________________________________
-// #define SLEEP // zakomentowac, jesli nie chcemy sleepow w programie  <-- DO TESTOW
+#define SLEEP // zakomentowac, jesli nie chcemy sleepow w programie  <-- DO TESTOW
 // ___________________________________________________________________
 
 
-sem_t opiekun_semafor; // Semafor do synchronizacji watkow
-pthread_t id_dziecko;
-volatile int zakoncz_program = 0; // Flaga do zakonczenia programu
+/*
+    UZYWANE SEMAFORY:
 
-void *dziecko(void* _wat);
-void obsluga_SIGINT(int sig);
-void obsluga_USR2(int sig);
+    SEMAFOR 0 - WEJSCIE DO BUDYNKU
+    SEMAFOR 2 - CZY REJESTRACJA CZYNNA
+    SEMAFOR 4 - DOSTEP DO PLIKU RAPORT
+    SEMAFOR 5 - CZY BUDENK JEST OTWARTY
+    SEMAFOR 6 - DOSTEP DO WARTOSCI SEMAFORA 5
+    SEMAFOR 7 - KONTROLA PRZEPELNIENIA KOLEJKI DO REJESTRACJI
+    SEMAFOR 8 - KONTROLA PRZEPELNIENIA KOLEJKI WYJSCIA PACJENTOW
+*/
 
 int main(){
     
-
-    signal(SIGTERM, handlerSIGTERM);
     // Obsluga sygnalu SIGINT
     struct sigaction sa;
     sa.sa_handler = obsluga_SIGINT;
@@ -69,22 +71,6 @@ int main(){
     }
     
     // _______________________________  DOSTANIE SIE DO BUDYNKU     _______________________________________
-    
-
-        //______________________________________________________________
-        waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku kontrolnego
-        
-        FILE *raport = fopen("raport", "a");
-        if (raport == NULL) {
-            perror_red("[Pacjent]: Blad otwarcia pliku raport\n");
-        } else {
-
-            fprintf(raport, "PACJENT %d ROZPOCZAL SWOJE DZIALANIE\n", pacjent.id_pacjent);
-            fflush(raport);
-            fclose(raport);
-        }
-        signalSemafor(sem_id, 4); 
-        //______________________________________________________________ 
 
     if(pacjent.wiek >= 18)
     printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d probuje wejsc do budynku\n", pacjent.id_pacjent, pacjent.wiek, pacjent.vip);
@@ -101,22 +87,7 @@ int main(){
             else
             printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wszedl do budynku pod opieka\n",msg.id_pacjent, msg.wiek, msg.vip);
             pacjent.czy_wszedl = 1; // ustawiam paramter pacjenta, ktory mowi, ze pacjent juz wszedl do budynku, wiec musi wyjsc w przyszlosci
-        
-        
-                //______________________________________________________________
-                waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku kontrolnego
-        
-                raport = fopen("raport", "a");
-                if (raport == NULL) {
-                    perror_red("[Pacjent]: Blad otwarcia pliku raport\n");
-                } else {
-        
-                    fprintf(raport, "PACJENT %d WSZEDL DO BUDYNKU\n", pacjent.id_pacjent);
-                    fflush(raport);
-                    fclose(raport);
-                }
-                signalSemafor(sem_id, 4); 
-                //______________________________________________________________ 
+
         
         }
         else signalSemafor(sem_id, 0);
@@ -138,57 +109,38 @@ int main(){
     if((valueSemafor(sem_id, 2) == 1) && (valueSemafor(sem_id, 5) == 1 && sygnal2 == 0)){
         signalSemafor(sem_id, 6);
 
-        if(sygnal2 == 0){
+        while(sygnal2 == 0){
             if(pacjent.wiek >= 18)
             printBlue("[Pacjent]: Pacjent %d czeka w kolejce na rejestracje do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
             else
             printBlue("[Pacjent]: Pacjent %d czeka z opiekunem w kolejce na rejestracje do lekarza: %d.\n", msg.id_pacjent, msg.id_lekarz);
                 
-            // Wyslij wiadomosc do rejestracji
-        
+            // Wyslij wiadomosc do rejestracji:            
+            waitSemafor(sem_id, 7, 0);  // pozwala na obsluge przepelnienia kolejki
             if (msgsnd(msg_id_rej, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
                 perror_red("[Pacjent]: Blad msgsnd - pacjent\n");
+                signalSemafor(sem_id, 7);
+                
                 exit(1);
             }
-        
-        //______________________________________________________________
-        waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku kontrolnego
-        
-        raport = fopen("raport", "a");
-        if (raport == NULL) {
-            perror_red("[Pacjent]: Blad otwarcia pliku raport\n");
-        } else {
-
-            fprintf(raport, "PACJENT %d WYSLAL WIADOMOSC DO REJESTRACJI\n", pacjent.id_pacjent);
-            fflush(raport);
-            fclose(raport);
-        }
-        signalSemafor(sem_id, 4); 
-        //______________________________________________________________ 
+            // signal znajduje sie w miejscu odbierajacym komunikaty z kolejki - w tym przypadku w rejestracji
 
             if (msgrcv(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), msg.id_pacjent, 0) == -1)
             {
+                if(errno == EINTR) break; // bo w razie sygnalu nastepuje przerwanie
+                
                 // Pacjent czeka na potwierdzenie, ze moze wyjsc
                 perror_red("[Pacjent]: Blad msgrcv\n");
                 exit(1);
             }
+            signalSemafor(sem_id, 8); // zwieksz licznik miejsca w kolejce do wyjscia
+
+            if(msg.vip < 3) break;
+
+            msg.vip -=6 ;  // powrot do wartosci vip sprzed przekierowania
 
         }
 
-                //______________________________________________________________
-                waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku kontrolnego
-        
-                raport = fopen("raport", "a");
-                if (raport == NULL) {
-                    perror_red("[Pacjent]: Blad otwarcia pliku raport\n");
-                } else {
-        
-                    fprintf(raport, "PACJENT %d ODEBRAL WIADOMOSC O WYJSCIU\n", pacjent.id_pacjent);
-                    fflush(raport);
-                    fclose(raport);
-                }
-                signalSemafor(sem_id, 4); 
-                //______________________________________________________________ 
     } 
     else signalSemafor(sem_id, 6);
     
@@ -199,21 +151,6 @@ int main(){
         printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedl z budynku\n",msg.id_pacjent, msg.wiek, msg.vip);
         else
         printBlue("[Pacjent]: Pacjent nr %d, wiek: %d, vip:%d wyszedl z budynku wraz z opiekunem\n",msg.id_pacjent, msg.wiek, msg.vip);
-    
-            //______________________________________________________________
-            waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku kontrolnego
-        
-            raport = fopen("raport", "a");
-            if (raport == NULL) {
-                perror_red("[Pacjent]: Blad otwarcia pliku raport\n");
-            } else {
-    
-                fprintf(raport, "PACJENT %d WYSZEDL Z BUDYNKU\n", pacjent.id_pacjent);
-                fflush(raport);
-                fclose(raport);
-            }
-            signalSemafor(sem_id, 4); 
-            //______________________________________________________________ 
     
     }
 
@@ -237,22 +174,6 @@ int main(){
     
     if(pacjent.czy_wszedl == 0)
     printBlue("[Pacjent]: Pacjent nr %d nie dal rady wejsc do budynku i zakonczyl dzialanie\n", pacjent.id_pacjent);
-
-
-        //______________________________________________________________
-        waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku kontrolnego
-        
-        raport = fopen("raport", "a");
-        if (raport == NULL) {
-            perror_red("[Pacjent]: Blad otwarcia pliku raport\n");
-        } else {
-
-            fprintf(raport, "PACJENT %d ZAKONCZYL SWOJE DZIALANIE\n", pacjent.id_pacjent);
-            fflush(raport);
-            fclose(raport);
-        }
-        signalSemafor(sem_id, 4); 
-        //______________________________________________________________ 
 
     return 0;
 }
@@ -302,9 +223,4 @@ void obsluga_USR2(int sig){
 
     printRed("Pacjent %d otrzymal sygnal wyproszenia wszystkich pacjentow z budynku.\n", pacjent.id_pacjent);
     sygnal2 = 1;
-}
-
-void handlerSIGTERM(int signum){
-
-    printRed("PACJENT %d OTRZYMAL SYGNAL SIGTERM I ZAKONCZYL SWOJE DZIALANIE\n", pacjent.id_pacjent);
 }

@@ -42,10 +42,17 @@ typedef struct {
 } Wiadomosc;
 //  struktura wiadomosci w rejestracji
 
-Pacjent pacjent; //globalna zmienna do ulatiwenia obslugi SIGUSR2
-int sem_id;
-volatile sig_atomic_t sygnal2 = 0;
+Pacjent pacjent; // globalna zmienna do ulatiwenia obslugi SIGUSR2
+int sem_id; // zmienna globalna dla id zbioru semaforow
+volatile sig_atomic_t sygnal2 = 0;  // zmienna potrzebna do obslugi sygnalu dyrektora
 
+sem_t opiekun_semafor; // Semafor do synchronizacji watkow
+pthread_t id_dziecko;   // id watku dziecka
+volatile int zakoncz_program = 0; // Flaga do zakonczenia programu potrzebna dla watku dziecka
+
+void *dziecko(void* _wat);
+void obsluga_SIGINT(int sig);
+void obsluga_USR2(int sig);
 void handlerSIGTERM(int signum);
 
 void inicjalizujPacjenta(Pacjent *pacjent){
@@ -63,10 +70,17 @@ void inicjalizujPacjenta(Pacjent *pacjent){
 
     int pomocnicza_lekarz = losuj_int(100); // 0-99
     if (pomocnicza_lekarz < 60) pacjent->id_lekarz = 1; // 60% szans
-    else if (pomocnicza_lekarz < 70) pacjent->id_lekarz = 2; // 10% szans
-    else if (pomocnicza_lekarz < 80) pacjent->id_lekarz = 3; // 10% szans
-    else if (pomocnicza_lekarz < 90) pacjent->id_lekarz = 4; // 10% szans
+    else if (pomocnicza_lekarz >= 60 && pomocnicza_lekarz < 70) pacjent->id_lekarz = 2; // 10% szans
+    else if (pomocnicza_lekarz >= 70 && pomocnicza_lekarz < 80) pacjent->id_lekarz = 3; // 10% szans
+    else if (pomocnicza_lekarz >= 80 && pomocnicza_lekarz < 90) pacjent->id_lekarz = 4; // 10% szans
     else pacjent->id_lekarz = 5; // 10% szans
+
+    // int pomocnicza_lekarz = losuj_int(100); // 0-99
+    // //if (pomocnicza_lekarz < 60) pacjent->id_lekarz = 1; // 60% szans
+    // if (pomocnicza_lekarz < 60) pacjent->id_lekarz = 2; // 10% szans
+    // else if (pomocnicza_lekarz >= 60 && pomocnicza_lekarz < 73) pacjent->id_lekarz = 3; // 10% szans
+    // else if (pomocnicza_lekarz >= 73 && pomocnicza_lekarz < 86) pacjent->id_lekarz = 4; // 10% szans
+    // else pacjent->id_lekarz = 5; // 10% szans
 
 }
 

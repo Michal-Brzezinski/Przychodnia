@@ -1,7 +1,7 @@
 #include "dyrektor.h"
 
 // ___________________________________________________________________
-// #define SLEEP // zakomentowac, jesli nie chcemy sleepow w programie  <-- DO TESTOW
+#define SLEEP // zakomentowac, jesli nie chcemy sleepow w programie  <-- DO TESTOW
 // ___________________________________________________________________
 
 void zakonczPraceLekarza(int pid_procesu){
@@ -90,23 +90,23 @@ int main(int argc, char *argv[]){
                 czynna = 1;
                 // Inicjalizujemy ziarno liczb losowych i wybieramy losowy moment 
                 srand(time(NULL));
-                los_wyzwalacz = Tk-25;//(Tp+Tk)/2 ; //w połowie programu lub: + rand() % (Tk - Tp + 1);
+                los_wyzwalacz =(Tp+Tk)/2 ; //w połowie programu lub: + rand() % (Tk - Tp + 1);
             }
 
             // Jesli jeszcze nie wykonano wywolania i osiagnieto losowy moment
             if(!zakonczWywolanego && zwrocObecnyCzas() >= los_wyzwalacz) {
-                //zakonczPraceLekarza(pid_lekarza);
+                zakonczPraceLekarza(pid_lekarza);
                 zakonczWywolanego = 1;
                 printYellow("[Dyrektor]: Wyslano sygnal do Lekarza: %d\n", pid_lekarza);
             }
 
-            // if(zwrocObecnyCzas()>(Tp+10) && wypros_pacjentow==0) 
-            // {
-            //     // w losowy sposob wysylam takze drugi wygnał - w zależności o czasu
-            //     nakarzWyjscPacjentom();
-            //     wypros_pacjentow = 1;
-            //     sleep(3);
-            // }
+            if(zwrocObecnyCzas()>(Tp+10) && wypros_pacjentow==0) 
+            {
+                // w losowy sposob wysylam takze drugi wygnał - w zależności o czasu
+                nakarzWyjscPacjentom();
+                wypros_pacjentow = 1;
+                sleep(3);
+            }
 
             continue;
         }

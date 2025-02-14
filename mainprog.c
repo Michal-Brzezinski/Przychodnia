@@ -35,13 +35,13 @@ GENEROWANIA PROCESOW POTOMNYCH - LEKARZY, PACJENTOW I REJESTRACJI
 #define FIFO_DYREKTOR "fifo_dyrektor"   // nazwa kolejki fifo do przekazywania pidu lekarza dyrektorowi
 
 // Dane do moderowania pracy programu
-const static int max_generate = 300; // maksymalna liczba procesow pacjentow do wygenerowania
-int limit_pacjentow = 100; // maksymalna liczba pacjentow przyjetych przez wszystkich lekarzy
-const static char *building_max = "50";  //maksymalna liczba pacjentow w budynku
-const static char *Tp = "07:23";
-const static char *Tk = "19:23";
+const static int max_generate = 100; // maksymalna liczba procesow pacjentow do wygenerowania
+int limit_pacjentow = 90; // maksymalna liczba pacjentow przyjetych przez wszystkich lekarzy
+const static char *building_max = "30";  //maksymalna liczba pacjentow w budynku (230 - JESZCZE DZIALA POTEM SIE BLOKUJE)
+const static char *Tp = "20:40";
+const static char *Tk = "20:41";
 // ________________________________________________________________________________
-// #define SLEEP // zakomentowac, jesli nie chcemy sleepow w generowaniu pacjentow  <--- DO TESTOWANIA
+#define SLEEP // zakomentowac, jesli nie chcemy sleepow w generowaniu pacjentow  <--- DO TESTOWANIA
 // ________________________________________________________________________________
 
 // struktura pamieci wspoldzielonej
@@ -75,7 +75,6 @@ key_t msg_key_KARDIO; // klucz do kolejki do KARDIOLOGA
 key_t msg_key_OKUL;   // klucz do kolejki do OKULISTY
 key_t msg_key_PED;    // klucz do kolejki do PEDIATRY
 key_t msg_key_MP;     // klucz do kolejki do LEKARZA MEDYCYNY PRACY
-
 
 void sleep_with_interrupts(int seconds) {
 // funkcja sleep z obsluga przerwania sygnalami
@@ -186,7 +185,7 @@ int main()
     msg_id_MP = alokujKolejkeKomunikatow(msg_key_MP, IPC_CREAT | IPC_EXCL | 0600);
     // SEMAFOR DO RADZENIA SOBIE Z PRZEPELNIENIEM KOLEJKI LEKARZA MEDYCYNY PRACY
     inicjalizujSemafor(sem_id, 13, MAX_KOMUNIKATOW);
-                                                 
+
     char arg2[10];                                                        // arg2 to limit pacjentow dla wszystkich lekarzy - uzywany jako argument w execl
     sprintf(arg2, "%d", limit_pacjentow);                                 // Konwersja liczby na ciag znakow
 
@@ -388,7 +387,6 @@ int main()
     wyczyscProcesyPacjentow();
     int status;
     while (waitpid(-1, &status, WNOHANG) > 0);
-    
     // Po zamknieciu ewentualnych pozostalych pacjentow, oczekuje na ich zakonczenie by uniknac zombie
 
     // Zakoncz wszystkie procesy pacjentow, ktore nie zdazyly sie zakonczyc, po zakonczeniu generatora pacjentow

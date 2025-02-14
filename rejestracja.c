@@ -1,7 +1,7 @@
 #include "rejestracja.h"
 
 // ___________________________________________________________________
-// #define SLEEP // zakomentowac, jesli nie chcemy sleepow w programie  <-- DO TESTOW
+#define SLEEP // zakomentowac, jesli nie chcemy sleepow w programie  <-- DO TESTOW
 // ___________________________________________________________________
 
 int main(int argc, char *argv[])
@@ -20,8 +20,6 @@ int main(int argc, char *argv[])
 
     Tp = naSekundy(stringTp);
     Tk = naSekundy(stringTk);
-
-    // signal(SIGUSR2, handlerSIGUSR2);
 
     signal(SIGUSR2, zatrzymajOkienkoNr2);
 
@@ -98,6 +96,7 @@ int main(int argc, char *argv[])
             if (errno != ENOMSG)
             {
                 perror_red("[Rejestracja - 1 okienko]: Blad msgrcv - pacjent->rejestracja\n");
+                continue;
             }
 
             #ifdef SLEEP
@@ -106,6 +105,8 @@ int main(int argc, char *argv[])
             
             continue;
         }    
+        
+        signalSemafor(sem_id, 7);   // zwieksz licznik miejsca w kolejce do rejestracji
 
         int msg_id_pom; 
         switch(msg.id_lekarz){
@@ -125,7 +126,11 @@ int main(int argc, char *argv[])
             
             msg.mtype = msg.id_pacjent;
             // Wyslij pacjenta do domu
+
+            waitSemafor(sem_id, 8, 0);  // czekaj az znajdzie sie miejsce w kolejce do wyjscia
             if (msgsnd(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                signalSemafor(sem_id, 8);  // zwieksz licznik miejsc w kolejce wyjscia (semafor)
+
                 perror_red("[Rejestracja - 1 okienko]: Blad msgsnd - pacjent do domu\n");
             }
             //_______________   WPISANIE NIEPRZYJETEGO PACJENTA DO RAPORTU  _____________________
@@ -155,36 +160,27 @@ int main(int argc, char *argv[])
             continue;
         }
 
-
-            //______________________________________________________________
-            waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku kontrolnego
-    
-            FILE *raport = fopen("raport", "a");
-            if (raport == NULL) {
-                perror_red("[Pacjent]: Blad otwarcia pliku raport\n");
-            } else {
-    
-                fprintf(raport, "1 OKNO: PACJENT %d ZAREJESTROWANY DO LEKARZA %d\n", msg.id_pacjent, msg.id_lekarz);
-                fflush(raport);
-                fclose(raport);
-            }
-            signalSemafor(sem_id, 4); 
-            //______________________________________________________________ 
-
-
         printGreen("[Rejestracja - 1 okienko]: Zarejestrowano pacjenta nr %d do lekarza: %d\n", msg.id_pacjent, msg.id_lekarz);
         msg.mtype = msg.vip; // ustalenie priorytetu przyjecia pacjenta
         // Wyslij pacjenta do lekarza
         errno = 0;
-        
+
+        waitSemafor(sem_id, 8+msg.id_lekarz, 0);  // czekaj na miejsce w kolejce do lekarza
         if ((msgsnd(msg_id_pom, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) || zwrocObecnyCzas() > Tk) {
-            if(errno != 0)
+            signalSemafor(sem_id, 8+msg.id_lekarz);  // zwieksz licznik miejsc w kolejce do lekarza
+            
+            if(errno != 0){
                 perror_red("[Rejestracja - 1 okienko]: Blad msgsnd - pacjent do lekarza\n");
+            }
             
             msg.mtype = msg.id_pacjent;
             // Wyslij pacjenta do domu
+
+            waitSemafor(sem_id, 8, 0);  // czekaj az znajdzie sie miejsce w kolejce do wyjscia
             if (msgsnd(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
                 perror_red("[Rejestracja]: Blad msgsnd - pacjent do domu\n");
+                
+                signalSemafor(sem_id, 8);  // zwieksz licznik miejsc w kolejce do wyjscia
             }
             signalSemafor(sem_id, 3);   // informuje o mozliwosci dzialania na tablicy przyjec
             continue;
@@ -268,8 +264,12 @@ int main(int argc, char *argv[])
 
                 pozostali[i].mtype = pozostali[i].id_pacjent;
                 // Wyslij pacjenta do domu
+
+                waitSemafor(sem_id, 8, 0);  // czekaj az znajdzie sie miejsce w kolejce do wyjscia
                 if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
                     perror_red("[Rejestracja]: Blad msgsnd - pacjent do domu\n");
+                    signalSemafor(sem_id, 8);  // zwieksz licznik miejsc w kolejce do wyjscia
+                    
                     continue;
                 }
 
@@ -332,6 +332,8 @@ void uruchomOkienkoNr2()
                 continue;
             }
 
+            signalSemafor(sem_id, 7);   // zwieksz licznik miejsca w kolejce do rejestracji
+
             int msg_id_pom; 
             switch(msg.id_lekarz){
                 // przypisanie zmiennej pomocniczej odpowiedniej wartosci id kolejki lekarza
@@ -350,8 +352,12 @@ void uruchomOkienkoNr2()
                 
                 msg.mtype = msg.id_pacjent;
                 // Wyslij pacjenta do domu
+                
+                waitSemafor(sem_id, 8, 0);  // czekaj az znajdzie sie miejsce w kolejce do wyjscia
                 if (msgsnd(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
                     perror_red("[Rejestracja - 2 okienko]: Blad msgsnd - pacjent do domu\n");
+                    signalSemafor(sem_id, 8);  // zwieksz licznik miejsc w kolejce do wyjscia
+                
                 }
 
                 //_______________   WPISANIE NIEPRZYJETEGO PACJENTA DO RAPORTU  _____________________
@@ -380,35 +386,27 @@ void uruchomOkienkoNr2()
                 continue;
             }
 
-
-            //______________________________________________________________
-            waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku kontrolnego
-    
-            FILE *raport = fopen("raport", "a");
-            if (raport == NULL) {
-                perror_red("[Pacjent]: Blad otwarcia pliku raport\n");
-            } else {
-    
-                fprintf(raport, "2 OKNO: PACJENT %d ZAREJESTROWANY DO LEKARZA %d\n", msg.id_pacjent, msg.id_lekarz);
-                fflush(raport);
-                fclose(raport);
-            }
-            signalSemafor(sem_id, 4); 
-            //______________________________________________________________ 
-
-
             printGreen("[Rejestracja - 2 okienko]: Zarejestrowano pacjenta nr %d do lekarza: %d\n", msg.id_pacjent, msg.id_lekarz);
             msg.mtype = msg.vip; // ustalenie priorytetu przyjecia pacjenta
             // Wyslij pacjenta do lekarza
             
             errno = 0;
+            
+            waitSemafor(sem_id, 8+msg.id_lekarz, 0);  // czekaj na miejsce w kolejce do lekarza
             if ((msgsnd(msg_id_pom, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) || zwrocObecnyCzas() > Tk) {
-                if(errno != 0)
-                    perror_red("[Rejestracja - 2 okienko]: Blad msgsnd - pacjent do lekarza\n");
+                signalSemafor(sem_id, 8+msg.id_lekarz);  // zwieksz licznik miejsc w kolejce do lekarza
                 
+                if(errno != 0){
+                    perror_red("[Rejestracja - 2 okienko]: Blad msgsnd - pacjent do lekarza\n");
+                }
+
                 msg.mtype = msg.id_pacjent;
                 // Wyslij pacjenta do domu
+
+                waitSemafor(sem_id, 8, 0);  // czekaj az znajdzie sie miejsce w kolejce do wyjscia
                 if (msgsnd(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                    signalSemafor(sem_id, 8);  // zwieksz licznik miejsc w kolejce do wyjscia
+                    
                     perror_red("[Rejestracja - 2 okienko]: Blad msgsnd - pacjent do domu\n");
                 }
                 signalSemafor(sem_id, 3);   // informuje o mozliwosci dzialania na tablicy przyjec
