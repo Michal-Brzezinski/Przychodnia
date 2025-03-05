@@ -148,7 +148,7 @@ void handle_sigint(int sig)
 
     wyczyscProcesyPacjentow();
     pthread_join(tid, NULL);
-    if(process_exists("pacjent"))raise(SIGTERM);
+    raise(SIGTERM);
     //printRed("\n[Main]: Zakonczono program po otrzymaniu SIGINT.\n");
     exit(0);
 }
