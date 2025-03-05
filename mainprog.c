@@ -26,6 +26,9 @@ GENEROWANIA PROCESOW POTOMNYCH - LEKARZY, PACJENTOW I REJESTRACJI
 #include <signal.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <string.h>
+#include <dirent.h>
+#include <pthread.h>
 
 #include "MyLib/sem_utils.h"
 #include "MyLib/msg_utils.h"
@@ -35,29 +38,41 @@ GENEROWANIA PROCESOW POTOMNYCH - LEKARZY, PACJENTOW I REJESTRACJI
 #define FIFO_DYREKTOR "fifo_dyrektor"   // nazwa kolejki fifo do przekazywania pidu lekarza dyrektorowi
 
 // Dane do moderowania pracy programu
-const static int max_generate = 100; // maksymalna liczba procesow pacjentow do wygenerowania
-int limit_pacjentow = 90; // maksymalna liczba pacjentow przyjetych przez wszystkich lekarzy
-const static char *building_max = "30";  //maksymalna liczba pacjentow w budynku (230 - JESZCZE DZIALA POTEM SIE BLOKUJE)
-const static char *Tp = "20:40";
-const static char *Tk = "20:41";
+const static int max_generate = 6000; // maksymalna liczba procesow pacjentow do wygenerowania
+int limit_pacjentow = 5500; // maksymalna liczba pacjentow przyjetych przez wszystkich lekarzy
+const static char *building_max = "5700";  //maksymalna liczba pacjentow w budynku (230 - JESZCZE DZIALA POTEM SIE BLOKUJE)
+const static char *Tp = "06:39";
+const static char *Tk = "22:40";
+
 // ________________________________________________________________________________
-#define SLEEP // zakomentowac, jesli nie chcemy sleepow w generowaniu pacjentow  <--- DO TESTOWANIA
+// #define SLEEP // zakomentowac, jesli nie chcemy sleepow w generowaniu pacjentow  <--- DO TESTOWANIA
+// W PLIKU UTILS.H -> DLA WSZYSTKICH PLIKOW 
 // ________________________________________________________________________________
 
 // struktura pamieci wspoldzielonej
-// pamiec_wspoldzielona[0] - wspolny licznik pacjentow DLA REJESTRACJI
-// pamiec_wspoldzielona[1-5] - limity pacjentow dla lekarzy DLA REJESTRACJI
+
+// pamiec_wspoldzielona_rej[0] - wspolny licznik pacjentow DLA REJESTRACJI
+// pamiec_wspoldzielona_rej[1-5] - limity pacjentow dla lekarzy DLA REJESTRACJI
 
 volatile sig_atomic_t keep_generating = 1;  // zmienne sig_atomic_t do obslugi sygnalow
 volatile sig_atomic_t rejestracja_dziala = 1;
+volatile sig_atomic_t zakoncz_gc = 0;
 pid_t generator_lekarzy_pid = -1;
 pid_t rejestracja_pid = -1;
 pid_t dyrektor_pid = -1;
+pthread_t tid;
 pid_t lekarze_pid[5];             // Tablica do przechowywania PID-ow procesow lekarzy
 
-int shm_id; // id pamieci wspoldzielonej
-int *pamiec_wspoldzielona;
+int shm_id_rejestracja; // id pamieci wspoldzielonej
+int *pamiec_wspoldzielona_rej;
+key_t shm_key_rejestracja;        // klucz do pamieci wspoldzielonej rejestracji
+
+int shm_dostepnosc;//
+sig_atomic_t *dostepnosc_lekarza;//
+key_t shm_key_dostepnosc;//
+
 int sem_id;            // id zbioru semaforow
+
 int msg_id_rej;       // id kolejki do rejestracji
 int msg_id_wyjscie;    // kolejka sluzaca do odpowiedniego sygnalizowania 
                       //  pacjentom kiedy powinni wyjsc z przychodni
@@ -68,7 +83,6 @@ int msg_id_PED;       // id 4. kolejki PEDIATRY
 int msg_id_MP;        // id 5. kolejki LEKARZA MEDYCYNY PRACY
 key_t klucz_wejscia;  // klucz do semafora panujacego nad iloscia pacjentow w budynku
 key_t klucz_wyjscia;  // klucz odpowiedni dla msg_id_wyjscie
-key_t shm_key;        // klucz do pamieci wspoldzielonej
 key_t msg_key_rej;    // klucz do kolejki do rejestracji
 key_t msg_key_POZ;    // klucz do kolejki do POZ
 key_t msg_key_KARDIO; // klucz do kolejki do KARDIOLOGA
@@ -98,6 +112,9 @@ void obsluga_USR1(int sig){
     rejestracja_dziala = 0;
 }
 
+int process_exists(const char *process_name);
+void *cleanup_thread(void *arg);
+
 void handle_sigint(int sig)
 {
     keep_generating = 0;
@@ -111,12 +128,13 @@ void handle_sigint(int sig)
     {
         kill(rejestracja_pid, SIGTERM);
     }
-
+    zakoncz_gc = 1;
     // Zwolnij zasoby IPC
     zwolnijSemafor(klucz_wejscia);
     zwolnijKolejkeKomunikatow(msg_key_rej);
     zwolnijKolejkeKomunikatow(klucz_wyjscia);
-    zwolnijPamiecWspoldzielona(shm_key);
+    zwolnijPamiecWspoldzielona(shm_key_rejestracja);
+    zwolnijPamiecWspoldzielona(shm_key_dostepnosc);//
     zwolnijKolejkeKomunikatow(msg_key_POZ);
     zwolnijKolejkeKomunikatow(msg_key_KARDIO);
     zwolnijKolejkeKomunikatow(msg_key_OKUL);
@@ -124,7 +142,14 @@ void handle_sigint(int sig)
     zwolnijKolejkeKomunikatow(msg_key_MP);
     usunNiepotrzebnePliki();
 
-    printRed("\n[Main]: Zakonczono program po otrzymaniu SIGINT.\n");
+    waitpid(dyrektor_pid, NULL, 0);
+    waitpid(generator_lekarzy_pid, NULL, 0);
+    waitpid(rejestracja_pid, NULL, 0);
+
+    wyczyscProcesyPacjentow();
+    pthread_join(tid, NULL);
+    if(process_exists("pacjent"))raise(SIGTERM);
+    //printRed("\n[Main]: Zakonczono program po otrzymaniu SIGINT.\n");
     exit(0);
 }
 
@@ -145,11 +170,19 @@ int main()
     inicjalizujSemafor(sem_id, 4, 1);                            // semafor do pracy z plikiem 
     inicjalizujSemafor(sem_id, 5, 0);                            // pomocniczy semafor - czy budynek jest otwarty - moze byc signalowany przez dyrektora
     inicjalizujSemafor(sem_id, 6, 1);                            // semafor do kontroli pracy nad semaforem 5
+    inicjalizujSemafor(sem_id, 14, 0);                           // semafor, ktory kontroluje czy wszystkie procesy lekarzy rozpoczely dzialanie
     
-    shm_key = generuj_klucz_ftok(".", 'X');
-    shm_id = alokujPamiecWspoldzielona(shm_key, PAM_SIZE * sizeof(int), IPC_CREAT | IPC_EXCL | 0600);
-    pamiec_wspoldzielona = dolaczPamiecWspoldzielona(shm_id, 0);
-    memset(pamiec_wspoldzielona, 0, PAM_SIZE * sizeof(int)); // Inicjalizacja wszystkich elementow pamieci na 0
+    shm_key_rejestracja = generuj_klucz_ftok(".", 'X');
+    shm_id_rejestracja = alokujPamiecWspoldzielona(shm_key_rejestracja, PAM_SIZE * sizeof(int), IPC_CREAT | IPC_EXCL | 0600);
+    pamiec_wspoldzielona_rej = dolaczPamiecWspoldzielona(shm_id_rejestracja, 0);
+    memset(pamiec_wspoldzielona_rej, 0, PAM_SIZE * sizeof(int)); // Inicjalizacja wszystkich elementow pamieci na 0
+
+    //
+    shm_key_dostepnosc = generuj_klucz_ftok(".", 'D');
+    shm_dostepnosc = alokujPamiecWspoldzielona(shm_key_dostepnosc, DOSTEPNOSC * sizeof(sig_atomic_t), IPC_CREAT | IPC_EXCL | 0600);
+    dostepnosc_lekarza = dolaczPamiecWspoldzielona(shm_dostepnosc, 0);
+    memset(dostepnosc_lekarza, 1, DOSTEPNOSC * sizeof(sig_atomic_t)); // Inicjalizacja wszystkich elementow pamieci na 0
+//
 
     msg_key_rej = generuj_klucz_ftok(".", 'B');
     msg_id_rej = alokujKolejkeKomunikatow(msg_key_rej, IPC_CREAT | IPC_EXCL | 0600);
@@ -293,6 +326,7 @@ int main()
             }
             else if (pid == 0)
             {
+                printRed("Lekarz o id %d ma pid %d\n", i, getpid());
                 execl("./lekarz", "lekarz", arg1, arg2, Tp, Tk, NULL);
                 // 1. argument to id lekarza, 2. argument to limit pacjentow dla wszystkich lekarzy losowo wygenerowany
                 perror_red("[Main]: Blad execl dla lekarza\n");
@@ -337,6 +371,13 @@ int main()
         exit(0); // Zakoncz proces potomny po wygenerowaniu pacjentow
     }
 
+
+    if (pthread_create(&tid, NULL, cleanup_thread, &msg_id_wyjscie) != 0) {
+        perror("pthread_create");
+        exit(1);
+    }
+
+
     //______________________________    PACJENCI     ______________________________
 
     // Utworz proces potomny do generowania pacjentow
@@ -344,6 +385,7 @@ int main()
 
         // Proces potomny: generowanie pacjentow
         // Teoretycznie ma ten sam handler zakonczenia procesow dzieci
+
     for (i = 0; i < max_generate && keep_generating; i++)
     {
         #ifdef SLEEP
@@ -392,10 +434,12 @@ int main()
     // Zakoncz wszystkie procesy pacjentow, ktore nie zdazyly sie zakonczyc, po zakonczeniu generatora pacjentow
     // i zakonczeniu rejestracji, aby nie prosily o nieistniejace juz zasoby
 
+    pthread_join(tid, NULL);
     zwolnijSemafor(klucz_wejscia);
     zwolnijKolejkeKomunikatow(klucz_wyjscia);
     zwolnijKolejkeKomunikatow(msg_key_rej);
-    zwolnijPamiecWspoldzielona(shm_key);
+    zwolnijPamiecWspoldzielona(shm_key_rejestracja);
+    zwolnijPamiecWspoldzielona(shm_key_dostepnosc);//
     zwolnijKolejkeKomunikatow(msg_key_POZ);
     zwolnijKolejkeKomunikatow(msg_key_KARDIO);
     zwolnijKolejkeKomunikatow(msg_key_OKUL);
@@ -408,4 +452,70 @@ int main()
 
     
     return 0;
+}
+
+
+int process_exists(const char *process_name) {
+    struct dirent *entry;
+    DIR *dp = opendir("/proc");
+
+    if (!dp) {
+        perror("opendir");
+        return -1;
+    }
+
+    while ((entry = readdir(dp)) != NULL) {
+        // Sprawdzenie, czy nazwa składa się tylko z cyfr (PID)
+        if (entry->d_name[0] < '0' || entry->d_name[0] > '9')
+            continue;
+
+        // Konstrukcja ścieżki do pliku "/proc/PID/comm"
+        char path[256];
+        snprintf(path, sizeof(path), "/proc/%s/comm", entry->d_name);
+
+        // Otwieramy plik, który zawiera nazwę procesu
+        FILE *fp = fopen(path, "r");
+        if (fp) {
+            char name[256];
+            if (fgets(name, sizeof(name), fp)) {
+                name[strcspn(name, "\n")] = 0;  // Usunięcie znaku nowej linii
+
+                if (strcmp(name, process_name) == 0) {
+                    fclose(fp);
+                    closedir(dp);
+                    return 1;  // Proces istnieje
+                }
+            }
+            fclose(fp);
+        }
+    }
+
+    closedir(dp);
+    return 0;  // Brak procesu o tej nazwie
+}
+
+void *cleanup_thread(void *arg) {
+    int msg_id_wyjscie = *((int *)arg);
+    waitSemafor(sem_id, 6, 0);
+    while (valueSemafor(sem_id, 5) == 1 && zakoncz_gc == 0) {
+        signalSemafor(sem_id, 6);
+        int exists = process_exists("pacjent");
+        if (exists == 0) {
+            
+            Wiadomosc message;
+            int ret;
+            // Odebranie wszystkich komunikatów w trybie nieblokującym (IPC_NOWAIT)
+            while ((ret = msgrcv(msg_id_wyjscie, &message, sizeof(Wiadomosc) - sizeof(long), 0, IPC_NOWAIT)) != -1) {
+                
+            }
+            // Jeśli błąd wynika, że kolejka jest pusta, errno będzie ustawione na ENOMSG
+            if (errno != ENOMSG) {
+                perror("msgrcv");
+            }
+        }
+        if(zakoncz_gc == 1) break;
+        waitSemafor(sem_id, 6, 0);
+    }
+    signalSemafor(sem_id, 6);
+    return NULL;
 }

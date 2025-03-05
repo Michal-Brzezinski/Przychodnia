@@ -13,6 +13,8 @@
 #include <string.h>
 #include <sys/wait.h>
 
+// #define SLEEP - odkomentowac, aby wprowadzic sleep do programu
+
 const  static char *czerwony = "\033[1;31m";    // Czerwony kolor
 const static char *zielony = "\033[1;32m";  // Zielony kolor
 const static char *zolty = "\033[1;33m";  // Zolty kolor

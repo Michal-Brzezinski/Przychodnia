@@ -168,7 +168,7 @@ void czekaj_na_procesy(pid_t *pid_array, int size) {
 
 void wyczyscProcesyPacjentow()
 {
-system("killall pacjent");
+system("killall pacjent > /dev/null 2>&1");
 }
 
 void usunNiepotrzebnePliki(){

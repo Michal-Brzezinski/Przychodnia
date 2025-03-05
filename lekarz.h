@@ -38,17 +38,6 @@ typedef struct{
 
 }Lekarz;
 
-typedef struct {
-    long mtype;       // Typ wiadomosci
-    int id_pacjent;   // Numer pacjenta
-    int vip;          // Status VIP
-    int wiek;         // Wiek pacjenta
-    int id_lekarz;    // Numer preferowanego lekarza  
-    char kto_skierowal[128]; // nazwa lekarza, ktory skierowal
-} Wiadomosc;
-//  struktura wiadomosci w rejestracji
-
-
 //  --------------- ZMIENNE GLOBALNE UZYWANE W lekarz.c ---------------------------
 
 pthread_t POZ2;
@@ -62,6 +51,10 @@ key_t klucz_sem, klucz_kolejki_lekarza;
 
 key_t klucz_wyjscia;
 int msg_id_wyjscie;
+
+int shm_dostepnosc;//
+sig_atomic_t *dostepnosc_lekarza;//
+key_t shm_key_dostepnosc;//
 
 int limit_POZ2; // globalne do ulatwienia dzialania programu
 int limity_lekarzy[5];
@@ -186,12 +179,33 @@ void wypiszIOdeslijPacjentow(Lekarz *lekarz, int msg_id) {
             pozostali[i].mtype = pozostali[i].id_pacjent;
             
             waitSemafor(sem_id, 8, 0);  // czekaj az znajdzie sie miejsce w kolejce do wyjscia
-            if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-                perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
-                signalSemafor(sem_id, 8);
-                
-                continue;
+            if(kill(pozostali[i].id_pacjent, 0) == 0){
+                if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                    perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
+                    signalSemafor(sem_id, 8);
+                    
+                    continue;
+                }
             }
+
+                                    //_______________   WYSLANIE WIADOMOSCI DO WYJSCIA PACJENTOWI _____________________
+                                    
+                                    // Uzyskanie wylacznego dostepu do pliku raport poprzez semafor nr 4
+                                    waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
+                                    // Otwarcie pliku "raport" – tworzy, jesli nie istnieje; tryb "a" dopisuje linie
+                                    FILE *raport = fopen("raport", "a");
+                                    if (raport == NULL) {
+                                        perror_red("[Lekarz]: Blad otwarcia pliku raport\n");
+                                    } else {
+                                        fprintf(raport, "[WypiszIOdeslijPacjentow]: h1Wyslano wiadomosc wyjscia do pacjenta nr %d\n", pozostali[i].id_pacjent);
+                                        fflush(raport);
+                                        fclose(raport);
+                                    }
+                                    signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
+
+                                    // _____________________________________________________________________________________
+
+
         }
         free(pozostali); // Zwalniam pamiec
     }

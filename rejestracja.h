@@ -17,17 +17,7 @@
 #include "MyLib/msg_utils.h"
 #include "MyLib/utils.h"
 
-typedef struct {
-    long mtype;       // Typ wiadomosci
-    int id_pacjent;   // Numer pacjenta
-    int vip;          // Status VIP
-    int wiek;         // Wiek pacjenta
-    int id_lekarz;    // Numer preferowanego lekarza  
-    char kto_skierowal[128]; // nazwa lekarza, ktory skierowal
-} Wiadomosc;
-//  struktura wiadomosci w rejestracji
-
-// Definicja typu wyliczeniowego dla lekarzy
+// ____________ TYP WYLICZENIOWY NUMER-TYP LEKARZY
 enum lekarze{ 
     POZ = 1, 
     KARDIOLOG, 
@@ -37,25 +27,37 @@ enum lekarze{
 };
 
 volatile int running = 1; // Flaga do sygnalizowania zakonczenia
+pid_t pid_okienka2 = -1; // Zmienna globalna do przechowywania pid procesu okienka nr 2
 
-// Zmienna globalna do przechowywania pid procesu okienka nr 2
-pid_t pid_okienka2 = -1;
-
-int msg_id_rej; // id i klucz kolejki do rejestracji
+//________________ KOLEJKA DO REJESTRACJI
+int msg_id_rej; 
 key_t msg_key_rej;
 
-int sem_id; // id  i klucz do zbioru semaforow
+
+//_______________   ZBIOR SEMAFOROW
+int sem_id;
 key_t sem_key;
 
+//_______________________ KOLEJKA NA KOMUNIKATY O MOZLIWOSCI WYJSCIA Z BUDYNKU
 key_t klucz_wyjscia;
 int msg_id_wyjscie;
 
-key_t msg_key_POZ_rej;       // klucz do kolejki dla pacjentow przekierowanych od POZ
-int msg_id_POZ_rej;       // id do kolejki dla pacjentow przekierowanych od POZ
+//_______________________ KOLEJKA DLA PACJENTOW PRZEKIEROWANYCH OD POZ
+key_t msg_key_POZ_rej;    
+int msg_id_POZ_rej;       
 
-int shm_id; // id pamieci wspoldzielonej
-int *pamiec_wspoldzielona;
-key_t shm_key;        // klucz do pamieci wspoldzielonej
+//_____________________ PAMIEC WSPOLDZIELONA DO LICZENIA PRZYJEC LEKARZY W REJESTRACJI 
+//                                  (POMIEDZY PROCESAMI OKIENKA 1 I 2)
+int shm_id_przyjecia;
+int *przyjecia;        
+key_t shm_key_przyjecia;  
+
+//_______________________ PAMIEC WSPOLDZIELONA DO OCENY DOSTEPNOSCI LEKARZA 
+//                              (CZY NIE DOSTAL SYGNALU OD DYREKTORA)
+int shm_id_dostepnosc; 
+sig_atomic_t *dostepnosc_lekarza;   
+key_t shm_key_dostepnosc;
+
 
 int msg_id_1; // id 1. kolejki POZ
 int msg_id_2; // id 2. kolejki KARDIOLOGA
@@ -169,11 +171,18 @@ void odeslijPacjentowPrzekroczenieLimitu(int nr_okienka){
                 pozostali[i].mtype = pozostali[i].id_pacjent;
 
                 waitSemafor(sem_id, 8, 0);  // czekaj az znajdzie sie miejsce w kolejce do wyjscia
-                if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-                    printYellow("[Rejestracja]: Blad msgsnd dla PID %d\n", pozostali[i].id_pacjent);
-                    signalSemafor(sem_id, 8); // zwieksz licznik miejsc w kolejce do wyjscia
+                if(kill(pozostali[i].id_pacjent, 0) == 0){
+                    if (msgsnd(msg_id_wyjscie, &pozostali[i], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                        printYellow("[Rejestracja]: Blad msgsnd dla PID %d\n", pozostali[i].id_pacjent);
+                        signalSemafor(sem_id, 8); // zwieksz licznik miejsc w kolejce do wyjscia
 
+                    }
                 }
+
+                                    //_______________   WYSLANIE WIADOMOSCI DO WYJSCIA PACJENTOWI _____________________
+                                        fprintf(raport, "[odeslijPacjentowPoPrzekroczeniuLimitu]: 1Wyslano wiadomosc wyjscia do pacjenta nr %d\n", pozostali[i].id_pacjent);
+                                    // _____________________________________________________________________________________
+            
                 // Zapisz informację w raporcie
                 fprintf(raport, "Pacjent %d odeslany po osiagnieciu limitu %d\n", pozostali[i].id_pacjent, pozostali[i].id_lekarz);
                 fflush(raport);

@@ -1,8 +1,9 @@
 #include "pacjent.h"
 
-// ___________________________________________________________________
-#define SLEEP // zakomentowac, jesli nie chcemy sleepow w programie  <-- DO TESTOW
-// ___________________________________________________________________
+// ________________________________________________________________________________
+// #define SLEEP // zakomentowac, jesli nie chcemy sleepow w generowaniu pacjentow  <--- DO TESTOWANIA
+// W PLIKU UTILS.H -> DLA WSZYSTKICH PLIKOW 
+// ________________________________________________________________________________
 
 
 /*
@@ -60,7 +61,6 @@ int main(){
     key_t klucz_wyjscia = generuj_klucz_ftok(".", 'W');
     int msg_id_wyjscie = alokujKolejkeKomunikatow(klucz_wyjscia, IPC_CREAT | 0600);
 
-
     if(pacjent.wiek < 18){
 
         int utworz_dziecko=pthread_create(&id_dziecko,NULL,dziecko,(void*)&pacjent.id_pacjent);
@@ -117,23 +117,27 @@ int main(){
                 
             // Wyslij wiadomosc do rejestracji:            
             waitSemafor(sem_id, 7, 0);  // pozwala na obsluge przepelnienia kolejki
-            if (msgsnd(msg_id_rej, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-                perror_red("[Pacjent]: Blad msgsnd - pacjent\n");
-                signalSemafor(sem_id, 7);
-                
-                exit(1);
+            if(sygnal2 == 0){
+                if (msgsnd(msg_id_rej, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                        perror_red("[Pacjent]: Blad msgsnd - pacjent\n");
+                        signalSemafor(sem_id, 7);
+                        
+                        exit(1);
+                    }
+                }
+                // signal znajduje sie w miejscu odbierajacym komunikaty z kolejki - w tym przypadku w rejestracji
+            if(sygnal2 == 0){
+                if (msgrcv(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), msg.id_pacjent, 0) == -1)
+                {
+                    if(errno == EINTR) break; // bo w razie sygnalu nastepuje przerwanie
+                    
+                    // Pacjent czeka na potwierdzenie, ze moze wyjsc
+                    perror_red("[Pacjent]: Blad msgrcv\n");
+                    exit(1);
+                }
+                signalSemafor(sem_id, 8); // zwieksz licznik miejsca w kolejce do wyjscia
             }
-            // signal znajduje sie w miejscu odbierajacym komunikaty z kolejki - w tym przypadku w rejestracji
-
-            if (msgrcv(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), msg.id_pacjent, 0) == -1)
-            {
-                if(errno == EINTR) break; // bo w razie sygnalu nastepuje przerwanie
-                
-                // Pacjent czeka na potwierdzenie, ze moze wyjsc
-                perror_red("[Pacjent]: Blad msgrcv\n");
-                exit(1);
-            }
-            signalSemafor(sem_id, 8); // zwieksz licznik miejsca w kolejce do wyjscia
+            else break;
 
             if(msg.vip < 3) break;
 

@@ -9,6 +9,7 @@
 #include "utils.h"
 
 #define PAM_SIZE 7      // Rozmiar tablicy pamieci wspoldzielonej
+#define DOSTEPNOSC 5    // Rozmiar tablicy dostepnosci lekarzy
 
 int alokujPamiecWspoldzielona(key_t klucz, int rozmiar, int flagi);
 int *dolaczPamiecWspoldzielona(int shmID, int flagi);

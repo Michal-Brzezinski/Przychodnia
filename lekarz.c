@@ -1,11 +1,48 @@
 #include "lekarz.h"
 
-// ___________________________________________________________________
-#define SLEEP // zakomentowac, jesli nie chcemy sleepow w programie  <-- DO TESTOW
-// ___________________________________________________________________
+// ________________________________________________________________________________
+// #define SLEEP // zakomentowac, jesli nie chcemy sleepow w generowaniu pacjentow  <--- DO TESTOWANIA
+// W PLIKU UTILS.H -> DLA WSZYSTKICH PLIKOW 
+// ________________________________________________________________________________
+
+void obsluga_SIGUSR1(int sig){
+    koniec_pracy = 1;
+    shm_key_dostepnosc = generuj_klucz_ftok(".", 'D');
+    shm_dostepnosc = alokujPamiecWspoldzielona(shm_key_dostepnosc, DOSTEPNOSC * sizeof(sig_atomic_t), IPC_CREAT | 0600);
+    dostepnosc_lekarza = dolaczPamiecWspoldzielona(shm_dostepnosc, 0);
+    dostepnosc_lekarza[id_lekarz-1] = 0; // ustawienie dostepnosci lekarza na 0
+    printRed("Lekarz %d odebral sygnal dyrektora\n", id_lekarz);
+
+}
 
 int main(int argc, char *argv[])
 {
+
+
+    // ______________________ OBSLUGA HANDLERA _____________________________
+
+    struct sigaction ctrlc;
+    ctrlc.sa_handler = obsluga_SIGINT; // Funkcja obslugujaca SIGINT
+    sigemptyset(&ctrlc.sa_mask);       // Wyzerowanie maski sygnalow
+    ctrlc.sa_flags = SA_RESTART | SA_NOCLDSTOP; // To samo co przy pacjencie
+    if(sigaction(SIGINT, &ctrlc, NULL) == -1) {
+        perror_red("[Lekarz]: Blad sigaction dla SIGINT\n");
+        exit(1);
+    }
+
+    struct sigaction usr1;
+    usr1.sa_handler = obsluga_SIGUSR1;
+    sigemptyset(&usr1.sa_mask);
+    usr1.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+    if(sigaction(SIGUSR1, &usr1, NULL) == -1) {
+        perror_red("[Lekarz]: Blad sigaction dla SIGUSR1\n");
+        exit(1);
+    }
+
+
+    // ________________________ SPRAWDZENIE ARGUMENTOW WEJSCIOWYCH _____________________
+
+
     if (argc != 5)
     {
         perror_red("[Lekarz]: Nieprawidlowa liczba argumentow\n");
@@ -56,25 +93,10 @@ int main(int argc, char *argv[])
     // klucz generowany jest na bazie znaku reprezentujacego lekarza
     msg_id_lekarz = alokujKolejkeKomunikatow(klucz_kolejki_lekarza, IPC_CREAT | 0600);
 
-    // ______________________ OBSLUGA HANDLERA _____________________________
-
-    struct sigaction ctrlc;
-    ctrlc.sa_handler = obsluga_SIGINT; // Funkcja obslugujaca SIGINT
-    sigemptyset(&ctrlc.sa_mask);       // Wyzerowanie maski sygnalow
-    ctrlc.sa_flags = SA_RESTART | SA_NOCLDSTOP; // To samo co przy pacjencie
-    if(sigaction(SIGINT, &ctrlc, NULL) == -1) {
-        perror_red("[Lekarz]: Blad sigaction dla SIGINT\n");
-        exit(1);
-    }
-
-    struct sigaction usr1;
-    usr1.sa_handler = obsluga_SIGUSR1;
-    sigemptyset(&usr1.sa_mask);
-    usr1.sa_flags = SA_RESTART | SA_NOCLDSTOP;
-    if(sigaction(SIGUSR1, &usr1, NULL) == -1) {
-        perror_red("[Lekarz]: Blad sigaction dla SIGUSR1\n");
-        exit(1);
-    }
+    // PAMIEC DZIELONA PRZECHOWUJACA FLAGE DOSTEPNOSCI LEKARZA
+    shm_key_dostepnosc = generuj_klucz_ftok(".", 'D');
+    shm_dostepnosc = alokujPamiecWspoldzielona(shm_key_dostepnosc, DOSTEPNOSC * sizeof(sig_atomic_t), IPC_CREAT | 0600);
+    dostepnosc_lekarza = dolaczPamiecWspoldzielona(shm_dostepnosc, 0);
 
 
     //  ___________________________ OBSLUGA WATKU POZ2 ___________________________
@@ -106,10 +128,8 @@ int main(int argc, char *argv[])
 
 void czynnosci_lekarskie(Lekarz *lekarz){
     // Funkcja symulujaca prace lekarza
-   
-
-    // Aktualny czas
-
+ 
+    signalSemafor(sem_id, 14);
     int current_time;
 
     //  Czekaj na godzine rozpoczecia dzialania przychodni
@@ -176,12 +196,32 @@ void czynnosci_lekarskie(Lekarz *lekarz){
                     // Wyslij pacjenta do domu
 
                     waitSemafor(sem_id, 8, 0);  // czekaj az znajdzie sie miejsce w kolejce do wyjscia
-                    if (msgsnd(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-                        perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
-                        signalSemafor(sem_id, 8);  // zwieksz licznik miejsc w kolejce wyjscia (semafor)
+                    if(kill(msg.id_pacjent, 0) == 0){
+                        if (msgsnd(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                            perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
+                            signalSemafor(sem_id, 8);  // zwieksz licznik miejsc w kolejce wyjscia (semafor)
 
-                        exit(1);
+                            exit(1);
+                        }
                     }
+                    
+                                    //_______________   WYSLANIE WIADOMOSCI DO WYJSCIA PACJENTOWI _____________________
+                                    
+                                    // Uzyskanie wylacznego dostepu do pliku raport poprzez semafor nr 4
+                                    waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
+                                    // Otwarcie pliku "raport" – tworzy, jesli nie istnieje; tryb "a" dopisuje linie
+                                    FILE *raport = fopen("raport", "a");
+                                    if (raport == NULL) {
+                                        perror_red("[Lekarz]: Blad otwarcia pliku raport\n");
+                                    } else {
+                                        fprintf(raport, "[%s]: 1Wyslano wiadomosc wyjscia do pacjenta nr %d\n", lekarz->nazwa, msg.id_pacjent);
+                                        fflush(raport);
+                                        fclose(raport);
+                                    }
+                                    signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
+
+                                    // _____________________________________________________________________________________
+
                     
                     #ifdef SLEEP
                     sleep(4);
@@ -190,7 +230,7 @@ void czynnosci_lekarskie(Lekarz *lekarz){
                     break;
                 }
                 
-                int czy_dodatkowe_badania = losuj_int(100);
+                int czy_dodatkowe_badania = losuj_int(100); // zmienna pomagajaca w losowaniu badan dodatkowych
                 
                 // obsluga wysylania na dodatkowe badania/do specjalisty
                 if(lekarz->id_lekarz == 1 && czy_dodatkowe_badania < 20 && zwrocObecnyCzas() < Tk){
@@ -206,7 +246,7 @@ void czynnosci_lekarskie(Lekarz *lekarz){
                 }
 
                 if(lekarz->id_lekarz != 1 && czy_dodatkowe_badania < 10 && zwrocObecnyCzas() < Tk){
-                            
+
                     badania_ambulatoryjne(&msg, lekarz);
                     fflush(stdout);
                     --lekarz->licznik_pacjentow;
@@ -221,17 +261,35 @@ void czynnosci_lekarskie(Lekarz *lekarz){
                 }
                 
                 // Informuj pacjenta, ze moze wyjsc z budynku
-                Wiadomosc msg1 = msg;
-                msg1.mtype = msg.id_pacjent;
+              
                 // Wyslij pacjenta do domu
+                msg.mtype = msg.id_pacjent;
 
                 waitSemafor(sem_id, 8, 0);  // czekaj az znajdzie sie miejsce w kolejce do wyjscia
-                if (msgsnd(msg_id_wyjscie, &msg1, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-                    perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
-                    signalSemafor(sem_id, 8);  // zwieksz licznik miejsc w kolejce wyjscia (semafor)
-                    
-                    exit(1);
+                if(kill(msg.id_pacjent, 0) == 0){
+                    if (msgsnd(msg_id_wyjscie, &msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                        perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
+                        signalSemafor(sem_id, 8);  // zwieksz licznik miejsc w kolejce wyjscia (semafor)
+                        
+                        exit(1);
+                    }
                 }
+                                    //_______________   WYSLANIE WIADOMOSCI DO WYJSCIA PACJENTOWI _____________________
+                                    
+                                    // Uzyskanie wylacznego dostepu do pliku raport poprzez semafor nr 4
+                                    waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
+                                    // Otwarcie pliku "raport" – tworzy, jesli nie istnieje; tryb "a" dopisuje linie
+                                    FILE *raport = fopen("raport", "a");
+                                    if (raport == NULL) {
+                                        perror_red("[Lekarz]: Blad otwarcia pliku raport\n");
+                                    } else {
+                                        fprintf(raport, "[%s]: 2Wyslano wiadomosc wyjscia do pacjenta nr %d\n", lekarz->nazwa, msg.id_pacjent);
+                                        fflush(raport);
+                                        fclose(raport);
+                                    }
+                                    signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
+
+                                    // _____________________________________________________________________________________
                 
                 #ifdef SLEEP
                 sleep(4);
@@ -249,6 +307,8 @@ void czynnosci_lekarskie(Lekarz *lekarz){
         Wiadomosc *pozostali = wypiszPacjentowWKolejce(msg_id_lekarz, &kolejka_size, lekarz);
     
         if(pozostali  != NULL){
+            // jezeli wskaznik zostal poprawnie przypisany, wykonaj:
+
             waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
             FILE *raport = fopen("raport", "a");
             if (raport == NULL) {
@@ -261,12 +321,15 @@ void czynnosci_lekarskie(Lekarz *lekarz){
                 pozostali[j].mtype = pozostali[j].id_pacjent;
 
                 waitSemafor(sem_id, 8, 0);  // czekaj az znajdzie sie miejsce w kolejce do wyjscia
-                if (msgsnd(msg_id_wyjscie, &pozostali[j], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-                    perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
-                    signalSemafor(sem_id, 8);  // zwieksz licznik miejsc w kolejce wyjscia (semafor)
-                    
-                    continue;
+                if(kill(pozostali[j].id_pacjent, 0) == 0){
+                    if (msgsnd(msg_id_wyjscie, &pozostali[j], sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+                        perror_red("[Lekarz]: Blad msgsnd - pacjent do domu\n");
+                        signalSemafor(sem_id, 8);  // zwieksz licznik miejsc w kolejce wyjscia (semafor)
+                        
+                        continue;
+                    }
                 }
+                fprintf(raport, "[%s]: 3Wyslano wiadomosc wyjscia do pacjenta nr %d\n", lekarz->nazwa, pozostali[j].id_pacjent);
         
                 time_t now = time(NULL);
                 struct tm *local = localtime(&now);
@@ -284,6 +347,9 @@ void czynnosci_lekarskie(Lekarz *lekarz){
         }
     }
     
+
+
+
     return;
 }
 
@@ -308,11 +374,29 @@ void wyslij_do_specjalisty(Wiadomosc *msg, Lekarz *lekarz){
 
     msg->mtype = msg->id_pacjent; 
     waitSemafor(sem_id, 8, 0);  // czekaj az znajdzie sie miejsce w kolejce do wyjscia
-    if (msgsnd(msg_id_wyjscie, msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-        perror_red("[POZ]: Blad msgsnd - wyslanie pacjenta do specjalisty\n");
-        signalSemafor(sem_id, 8);  // zwieksz licznik miejsc w kolejce rejestracji (semafor)
-        
+    if(kill(msg->id_pacjent, 0) == 0){
+        if (msgsnd(msg_id_wyjscie, msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+            perror_red("[POZ]: Blad msgsnd - wyslanie pacjenta do specjalisty\n");
+            signalSemafor(sem_id, 8);  // zwieksz licznik miejsc w kolejce rejestracji (semafor)
+            
+        }
     }
+                                    //_______________   WYSLANIE WIADOMOSCI DO WYJSCIA PACJENTOWI _____________________
+                                    
+                                    // Uzyskanie wylacznego dostepu do pliku raport poprzez semafor nr 4
+                                    waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
+                                    // Otwarcie pliku "raport" – tworzy, jesli nie istnieje; tryb "a" dopisuje linie
+                                    FILE *raport = fopen("raport", "a");
+                                    if (raport == NULL) {
+                                        perror_red("[Lekarz]: Blad otwarcia pliku raport\n");
+                                    } else {
+                                        fprintf(raport, "[%s]: 4Wyslano wiadomosc wyjscia do pacjenta nr %d\n", lekarz->nazwa, msg->id_pacjent);
+                                        fflush(raport);
+                                        fclose(raport);
+                                    }
+                                    signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
+
+                                    // _____________________________________________________________________________________
 
     printMagenta("[%s]: lekarz przekierowal pacjenta nr %d do lekarza nr %d\n", lekarz->nazwa, msg->id_pacjent, msg->id_lekarz);
 }
@@ -324,33 +408,16 @@ void badania_ambulatoryjne(Wiadomosc *msg, Lekarz *lekarz){
     msg->vip = 0;   // nadal pacjentowi najwyzszy priorytet, aby wszedl do lekarza bez kolejki
     
     waitSemafor(sem_id, 8+lekarz->id_lekarz, 0);  // czekaj az znajdzie sie miejsce w kolejce do lekarza
-    if (msgsnd(msg_id_lekarz, msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
-        // wysylam bezposredni do lekarza, bez rejestracji
-        perror_red("[Badania amb.]: Blad msgsnd - wyslanie pacjenta do specjalisty\n");
-        signalSemafor(sem_id, 8+lekarz->id_lekarz);  // zwieksz licznik miejsc w kolejce do lekarza (semafor)
-        
-        exit(1);
+    if(kill(msg->id_pacjent, 0) == 0){
+        if (msgsnd(msg_id_lekarz, msg, sizeof(Wiadomosc) - sizeof(long), 0) == -1) {
+            // wysylam bezposredni do lekarza, bez rejestracji
+            perror_red("[Badania amb.]: Blad msgsnd - wyslanie pacjenta do specjalisty\n");
+            signalSemafor(sem_id, 8+lekarz->id_lekarz);  // zwieksz licznik miejsc w kolejce do lekarza (semafor)
+            
+            exit(1);
+        }
     }
-
     printMagenta("[Badania amb.]: pacjent nr %d skonczyl badania\n", msg->id_pacjent);
-}
-
-void obsluga_SIGUSR1(int sig){
-    printYellow("%d : ODEBRANO SYGNAL OD DYREKTORA\n", getpid());
-    koniec_pracy = 1;
-
-    key_t shm_key = generuj_klucz_ftok(".", 'X');
-    int shm_id = alokujPamiecWspoldzielona(shm_key, PAM_SIZE * sizeof(int), IPC_CREAT | 0600);
-    int *pamiec_wspoldzielona = dolaczPamiecWspoldzielona(shm_id, 0);
-
-    klucz_sem = generuj_klucz_ftok(".", 'A');
-    sem_id = alokujSemafor(klucz_sem, S, IPC_CREAT | 0600);
-
-    waitSemafor(sem_id, 3, 0);
-    pamiec_wspoldzielona[0] += limity_lekarzy[id_lekarz-1] - pamiec_wspoldzielona[id_lekarz];   //dodaje tylu pacjentow, aby symulowalo brak miejsc
-    pamiec_wspoldzielona[id_lekarz] = limity_lekarzy[id_lekarz-1];  // zakomunikowanie do rejestracji, zeby juz nie przyjmowali do tego lekarza
-    signalSemafor(sem_id, 3);
-
 }
 
 void obsluga_SIGINT(int sig) {

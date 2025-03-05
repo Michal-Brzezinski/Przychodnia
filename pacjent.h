@@ -32,16 +32,6 @@ typedef struct {
 } Pacjent;
 //  struktura pacjenta 
 
-typedef struct {
-    long mtype;       // Typ wiadomosci
-    int id_pacjent;   // Numer pacjenta
-    int vip;          // Status VIP
-    int wiek;         // Wiek pacjenta
-    int id_lekarz;    // Numer preferowanego lekarza 
-    char kto_skierowal[128]; // nazwa lekarza, ktory skierowal
-} Wiadomosc;
-//  struktura wiadomosci w rejestracji
-
 Pacjent pacjent; // globalna zmienna do ulatiwenia obslugi SIGUSR2
 int sem_id; // zmienna globalna dla id zbioru semaforow
 volatile sig_atomic_t sygnal2 = 0;  // zmienna potrzebna do obslugi sygnalu dyrektora
@@ -54,6 +44,7 @@ void *dziecko(void* _wat);
 void obsluga_SIGINT(int sig);
 void obsluga_USR2(int sig);
 void handlerSIGTERM(int signum);
+
 
 void inicjalizujPacjenta(Pacjent *pacjent){
 

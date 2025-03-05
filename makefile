@@ -1,9 +1,9 @@
 # Cel domyslny
 all: mainprog pacjent rejestracja lekarz dyrektor
 
-# Kompilowanie programu mainprog
+# Kompilowanie pliku mainprog.o
 mainprog: mainprog.o MyLib/sem_utils.o MyLib/msg_utils.o MyLib/utils.o MyLib/shm_utils.o
-	@gcc -o mainprog $^ -lm  
+	@gcc -o mainprog $^ -lpthread -lm   
 
 # Kompilowanie pliku mainprog.o
 mainprog.o: mainprog.c MyLib/sem_utils.h MyLib/msg_utils.h MyLib/utils.h MyLib/shm_utils.h
