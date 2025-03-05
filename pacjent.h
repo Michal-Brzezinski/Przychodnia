@@ -43,7 +43,6 @@ volatile int zakoncz_program = 0; // Flaga do zakonczenia programu potrzebna dla
 void *dziecko(void* _wat);
 void obsluga_SIGINT(int sig);
 void obsluga_USR2(int sig);
-void handlerSIGTERM(int signum);
 
 
 void inicjalizujPacjenta(Pacjent *pacjent){
@@ -65,13 +64,6 @@ void inicjalizujPacjenta(Pacjent *pacjent){
     else if (pomocnicza_lekarz >= 70 && pomocnicza_lekarz < 80) pacjent->id_lekarz = 3; // 10% szans
     else if (pomocnicza_lekarz >= 80 && pomocnicza_lekarz < 90) pacjent->id_lekarz = 4; // 10% szans
     else pacjent->id_lekarz = 5; // 10% szans
-
-    // int pomocnicza_lekarz = losuj_int(100); // 0-99
-    // //if (pomocnicza_lekarz < 60) pacjent->id_lekarz = 1; // 60% szans
-    // if (pomocnicza_lekarz < 60) pacjent->id_lekarz = 2; // 10% szans
-    // else if (pomocnicza_lekarz >= 60 && pomocnicza_lekarz < 73) pacjent->id_lekarz = 3; // 10% szans
-    // else if (pomocnicza_lekarz >= 73 && pomocnicza_lekarz < 86) pacjent->id_lekarz = 4; // 10% szans
-    // else pacjent->id_lekarz = 5; // 10% szans
 
 }
 

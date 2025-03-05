@@ -204,23 +204,6 @@ void czynnosci_lekarskie(Lekarz *lekarz){
                             exit(1);
                         }
                     }
-                    
-                                    //_______________   WYSLANIE WIADOMOSCI DO WYJSCIA PACJENTOWI _____________________
-                                    
-                                    // Uzyskanie wylacznego dostepu do pliku raport poprzez semafor nr 4
-                                    waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
-                                    // Otwarcie pliku "raport" – tworzy, jesli nie istnieje; tryb "a" dopisuje linie
-                                    FILE *raport = fopen("raport", "a");
-                                    if (raport == NULL) {
-                                        perror_red("[Lekarz]: Blad otwarcia pliku raport\n");
-                                    } else {
-                                        fprintf(raport, "[%s]: 1Wyslano wiadomosc wyjscia do pacjenta nr %d\n", lekarz->nazwa, msg.id_pacjent);
-                                        fflush(raport);
-                                        fclose(raport);
-                                    }
-                                    signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
-
-                                    // _____________________________________________________________________________________
 
                     
                     #ifdef SLEEP
@@ -274,22 +257,6 @@ void czynnosci_lekarskie(Lekarz *lekarz){
                         exit(1);
                     }
                 }
-                                    //_______________   WYSLANIE WIADOMOSCI DO WYJSCIA PACJENTOWI _____________________
-                                    
-                                    // Uzyskanie wylacznego dostepu do pliku raport poprzez semafor nr 4
-                                    waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
-                                    // Otwarcie pliku "raport" – tworzy, jesli nie istnieje; tryb "a" dopisuje linie
-                                    FILE *raport = fopen("raport", "a");
-                                    if (raport == NULL) {
-                                        perror_red("[Lekarz]: Blad otwarcia pliku raport\n");
-                                    } else {
-                                        fprintf(raport, "[%s]: 2Wyslano wiadomosc wyjscia do pacjenta nr %d\n", lekarz->nazwa, msg.id_pacjent);
-                                        fflush(raport);
-                                        fclose(raport);
-                                    }
-                                    signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
-
-                                    // _____________________________________________________________________________________
                 
                 #ifdef SLEEP
                 sleep(4);
@@ -329,7 +296,6 @@ void czynnosci_lekarskie(Lekarz *lekarz){
                         continue;
                     }
                 }
-                fprintf(raport, "[%s]: 3Wyslano wiadomosc wyjscia do pacjenta nr %d\n", lekarz->nazwa, pozostali[j].id_pacjent);
         
                 time_t now = time(NULL);
                 struct tm *local = localtime(&now);
@@ -381,22 +347,6 @@ void wyslij_do_specjalisty(Wiadomosc *msg, Lekarz *lekarz){
             
         }
     }
-                                    //_______________   WYSLANIE WIADOMOSCI DO WYJSCIA PACJENTOWI _____________________
-                                    
-                                    // Uzyskanie wylacznego dostepu do pliku raport poprzez semafor nr 4
-                                    waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
-                                    // Otwarcie pliku "raport" – tworzy, jesli nie istnieje; tryb "a" dopisuje linie
-                                    FILE *raport = fopen("raport", "a");
-                                    if (raport == NULL) {
-                                        perror_red("[Lekarz]: Blad otwarcia pliku raport\n");
-                                    } else {
-                                        fprintf(raport, "[%s]: 4Wyslano wiadomosc wyjscia do pacjenta nr %d\n", lekarz->nazwa, msg->id_pacjent);
-                                        fflush(raport);
-                                        fclose(raport);
-                                    }
-                                    signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
-
-                                    // _____________________________________________________________________________________
 
     printMagenta("[%s]: lekarz przekierowal pacjenta nr %d do lekarza nr %d\n", lekarz->nazwa, msg->id_pacjent, msg->id_lekarz);
 }

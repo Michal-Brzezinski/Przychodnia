@@ -141,23 +141,6 @@ int main(int argc, char *argv[])
                 }
             }
 
-                                    //_______________   WYSLANIE WIADOMOSCI DO WYJSCIA PACJENTOWI _____________________
-                                    
-                                    // Uzyskanie wylacznego dostepu do pliku raport poprzez semafor nr 4
-                                    waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
-                                    // Otwarcie pliku "raport" – tworzy, jesli nie istnieje; tryb "a" dopisuje linie
-                                    FILE *raport = fopen("raport", "a");
-                                    if (raport == NULL) {
-                                        perror_red("[Rejestracja]: Blad otwarcia pliku raport\n");
-                                    } else {
-                                        fprintf(raport, "[Rejestracja - 1 okienko]: 1Wyslano wiadomosc wyjscia do pacjenta nr %d\n", msg.id_pacjent);
-                                        fflush(raport);
-                                        fclose(raport);
-                                    }
-                                    signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
-
-                                    // _____________________________________________________________________________________
-
             signalSemafor(sem_id, 3);   // informuje o mozliwosci dzialania na tablicy przyjec
 
             continue;
@@ -191,7 +174,6 @@ int main(int argc, char *argv[])
             } else {
                 time_t now = time(NULL);
                 struct tm *local = localtime(&now);
-                fprintf(raport, "[Rejestracja - 1 okienko]: 2Wyslano wiadomosc wyjscia do pacjenta nr %d\n", msg.id_pacjent);
                 fprintf(raport, "[Rejestracja - 1 okienko]: %02d:%02d:%02d - pacjent nr %d nie przyjety do lekarza %d (brak miejsc), skierowany od %s\n",
                         local->tm_hour, local->tm_min, local->tm_sec,
                         msg.id_pacjent, msg.id_lekarz, msg.kto_skierowal);
@@ -233,25 +215,7 @@ int main(int argc, char *argv[])
                 }
             }
             signalSemafor(sem_id, 3);   // informuje o mozliwosci dzialania na tablicy przyjec
-            
-            
-                                    //_______________   WYSLANIE WIADOMOSCI DO WYJSCIA PACJENTOWI _____________________
-                                    
-                                    // Uzyskanie wylacznego dostepu do pliku raport poprzez semafor nr 4
-                                    waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
-                                    // Otwarcie pliku "raport" – tworzy, jesli nie istnieje; tryb "a" dopisuje linie
-                                    FILE *raport = fopen("raport", "a");
-                                    if (raport == NULL) {
-                                        perror_red("[Rejestracja]: Blad otwarcia pliku raport\n");
-                                    } else {
-                                        fprintf(raport, "[Rejestracja - 1 okienko]: 3Wyslano wiadomosc wyjscia do pacjenta nr %d\n", msg.id_pacjent);
-                                        fflush(raport);
-                                        fclose(raport);
-                                    }
-                                    signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
-
-                                    // _____________________________________________________________________________________
-            
+                      
             
             continue;
         }
@@ -281,17 +245,17 @@ int main(int argc, char *argv[])
         // Sprawdz liczbe procesow oczekujacych na rejestracje ponownie
         int liczba_procesow = policzProcesy(msg_id_rej);
         printYellow("[Rejestracja - 1 okienko]: Liczba oczekujacych w kolejce do rejestracji:\t%d\n", liczba_procesow);
-        if ((liczba_procesow > building_max / 2) && (pid_okienka2 < 0)) // jezeli PID < 0 to znaczy ze okno2 jeszcze nie dziala
-        {
-            // Uruchomienie okienka nr 2
-            zakoncz2okienko = 0;
-            uruchomOkienkoNr2(msg_id_rej, sem_id);
-        }
-        else if ((liczba_procesow < (building_max / 3) && (pid_okienka2 > 0)) || zakoncz2okienko == 1)
-        {
-            // Jesli liczba procesow spadla ponizej N/3 lub osiagnieto limit przyjec, zatrzymaj okienko nr 2
-            zatrzymajOkienkoNr2();
-        }
+        // if ((liczba_procesow > building_max / 2) && (pid_okienka2 < 0)) // jezeli PID < 0 to znaczy ze okno2 jeszcze nie dziala
+        // {
+        //     // Uruchomienie okienka nr 2
+        //     zakoncz2okienko = 0;
+        //     uruchomOkienkoNr2(msg_id_rej, sem_id);
+        // }
+        // else if ((liczba_procesow < (building_max / 3) && (pid_okienka2 > 0)) || zakoncz2okienko == 1)
+        // {
+        //     // Jesli liczba procesow spadla ponizej N/3 lub osiagnieto limit przyjec, zatrzymaj okienko nr 2
+        //     zatrzymajOkienkoNr2();
+        // }
         
         // Proces rejestracji kontynuuje swoja prace
         
@@ -347,7 +311,6 @@ int main(int argc, char *argv[])
 
                 time_t now = time(NULL);
                 struct tm *local = localtime(&now);
-                fprintf(raport, "[Rejestracja]: 4Wyslano wiadomosc wyjscia do pacjenta nr %d\n", pozostali[i].id_pacjent);
                 fprintf(raport, "[Rejestracja]: %02d:%02d:%02d - pacjent nr %d w kolejce po zakonczeniu rejestracji, skierowany od %s do id: %d\n",
                         local->tm_hour, local->tm_min, local->tm_sec,
                         pozostali[i].id_pacjent, pozostali[i].kto_skierowal, pozostali[i].id_lekarz);
@@ -440,23 +403,6 @@ void uruchomOkienkoNr2()
                     }
                 }
                 signalSemafor(sem_id, 3);   // informuje o mozliwosci dzialania na tablicy przyjec
-
-                                    //_______________   WYSLANIE WIADOMOSCI DO WYJSCIA PACJENTOWI _____________________
-                                    
-                                    // Uzyskanie wylacznego dostepu do pliku raport poprzez semafor nr 4
-                                    waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
-                                    // Otwarcie pliku "raport" – tworzy, jesli nie istnieje; tryb "a" dopisuje linie
-                                    FILE *raport = fopen("raport", "a");
-                                    if (raport == NULL) {
-                                        perror_red("[Rejestracja]: Blad otwarcia pliku raport\n");
-                                    } else {
-                                        fprintf(raport, "[Rejestracja - 2 okienko]: 1Wyslano wiadomosc wyjscia do pacjenta nr %d\n", msg.id_pacjent);
-                                        fflush(raport);
-                                        fclose(raport);
-                                    }
-                                    signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
-
-                                    // _____________________________________________________________________________________
     
                 continue;
             }
@@ -489,7 +435,6 @@ void uruchomOkienkoNr2()
                 } else {
                     time_t now = time(NULL);
                     struct tm *local = localtime(&now);
-                    fprintf(raport, "[Rejestracja - 2 okienko]: 2Wyslano wiadomosc wyjscia do pacjenta nr %d\n", msg.id_pacjent);
                     fprintf(raport, "[Rejestracja - 2 okienko]: %02d:%02d:%02d - pacjent nr %d nie przyjety do lekarza %d (brak miejsc), skierowany od %s\n",
                             local->tm_hour, local->tm_min, local->tm_sec,
                             msg.id_pacjent, msg.id_lekarz, msg.kto_skierowal);
@@ -530,24 +475,6 @@ void uruchomOkienkoNr2()
                     }
                 }
                 signalSemafor(sem_id, 3);   // informuje o mozliwosci dzialania na tablicy przyjec
-
-
-                                    //_______________   WYSLANIE WIADOMOSCI DO WYJSCIA PACJENTOWI _____________________
-                                    
-                                    // Uzyskanie wylacznego dostepu do pliku raport poprzez semafor nr 4
-                                    waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
-                                    // Otwarcie pliku "raport" – tworzy, jesli nie istnieje; tryb "a" dopisuje linie
-                                    FILE *raport = fopen("raport", "a");
-                                    if (raport == NULL) {
-                                        perror_red("[Rejestracja]: Blad otwarcia pliku raport\n");
-                                    } else {
-                                        fprintf(raport, "[Rejestracja - 2 okienko]: 3Wyslano wiadomosc wyjscia do pacjenta nr %d\n", msg.id_pacjent);
-                                        fflush(raport);
-                                        fclose(raport);
-                                    }
-                                    signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
-
-                                    // _____________________________________________________________________________________
 
                 continue;
             }

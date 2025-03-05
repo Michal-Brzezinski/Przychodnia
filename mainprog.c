@@ -39,8 +39,8 @@ GENEROWANIA PROCESOW POTOMNYCH - LEKARZY, PACJENTOW I REJESTRACJI
 
 // Dane do moderowania pracy programu
 const static int max_generate = 6000; // maksymalna liczba procesow pacjentow do wygenerowania
-int limit_pacjentow = 5500; // maksymalna liczba pacjentow przyjetych przez wszystkich lekarzy
-const static char *building_max = "5700";  //maksymalna liczba pacjentow w budynku (230 - JESZCZE DZIALA POTEM SIE BLOKUJE)
+int limit_pacjentow = 4000; // maksymalna liczba pacjentow przyjetych przez wszystkich lekarzy
+const static char *building_max = "3000";  //maksymalna liczba pacjentow w budynku (230 - JESZCZE DZIALA POTEM SIE BLOKUJE)
 const static char *Tp = "06:39";
 const static char *Tk = "22:40";
 
@@ -112,46 +112,10 @@ void obsluga_USR1(int sig){
     rejestracja_dziala = 0;
 }
 
+void handle_sigint(int sig);
 int process_exists(const char *process_name);
 void *cleanup_thread(void *arg);
 
-void handle_sigint(int sig)
-{
-    keep_generating = 0;
-
-    if (generator_lekarzy_pid > 0)
-    {
-        kill(generator_lekarzy_pid, SIGTERM);
-    }
-
-    if (rejestracja_pid > 0)
-    {
-        kill(rejestracja_pid, SIGTERM);
-    }
-    zakoncz_gc = 1;
-    // Zwolnij zasoby IPC
-    zwolnijSemafor(klucz_wejscia);
-    zwolnijKolejkeKomunikatow(msg_key_rej);
-    zwolnijKolejkeKomunikatow(klucz_wyjscia);
-    zwolnijPamiecWspoldzielona(shm_key_rejestracja);
-    zwolnijPamiecWspoldzielona(shm_key_dostepnosc);//
-    zwolnijKolejkeKomunikatow(msg_key_POZ);
-    zwolnijKolejkeKomunikatow(msg_key_KARDIO);
-    zwolnijKolejkeKomunikatow(msg_key_OKUL);
-    zwolnijKolejkeKomunikatow(msg_key_PED);
-    zwolnijKolejkeKomunikatow(msg_key_MP);
-    usunNiepotrzebnePliki();
-
-    waitpid(dyrektor_pid, NULL, 0);
-    waitpid(generator_lekarzy_pid, NULL, 0);
-    waitpid(rejestracja_pid, NULL, 0);
-
-    wyczyscProcesyPacjentow();
-    pthread_join(tid, NULL);
-    raise(SIGTERM);
-    //printRed("\n[Main]: Zakonczono program po otrzymaniu SIGINT.\n");
-    exit(0);
-}
 
 int main()
 {
@@ -270,12 +234,12 @@ int main()
     case -1:
         perror_red("[Main]: Blad fork dla dyrektora\n");
         // obsluga bledu - powiadomienie innych procesow (ktore utworzyly sie poprawnie) o bledzie (np. sygnaly)
-        exit(2);
+        exit(1);
     case 0:
         execl("./dyrektor", "dyrektor", Tp, Tk, NULL);
         // usuwanie wszystkich procesow i zasobow ipc - zaimplementowac
         perror_red("[Main]: Blad execl dla rejestracji\n");
-        exit(3);
+        exit(1);
     default:
         break; // Kontynuuj generowanie pozostalych procesow
     }
@@ -288,13 +252,13 @@ int main()
     case -1:
         perror_red("[Main]: Blad fork dla rejestracji\n");
         // obsluga bledu - powiadomienie innych procesow (ktore utworzyly sie poprawnie) o bledzie (np. sygnaly)
-        exit(2);
+        exit(1);
     case 0:
         print("[Main]: Uruchamianie rejestracji...\n");
         execl("./rejestracja", "rejestracja", arg2, Tp, Tk, building_max, NULL);
         // usuwanie wszystkich procesow i zasobow ipc - zaimplementowac
         perror_red("[Main]: Blad execl dla rejestracji\n");
-        exit(3);
+        exit(1);
     default:
         break; // Kontynuuj generowanie pozostalych procesow
     }
@@ -305,7 +269,7 @@ int main()
     if (generator_lekarzy_pid == -1)
     {
         perror_red("[Main]: Blad fork dla generatora lekarzy\n");
-        exit(4);
+        exit(1);
     }
     else if (generator_lekarzy_pid == 0)
     {
@@ -330,7 +294,7 @@ int main()
                 execl("./lekarz", "lekarz", arg1, arg2, Tp, Tk, NULL);
                 // 1. argument to id lekarza, 2. argument to limit pacjentow dla wszystkich lekarzy losowo wygenerowany
                 perror_red("[Main]: Blad execl dla lekarza\n");
-                exit(5);
+                exit(1);
             }
             else
             {
@@ -355,13 +319,13 @@ int main()
         int fifo_fd = open(FIFO_DYREKTOR, O_WRONLY);
         if(fifo_fd == -1) {
             perror_red("[Generator lekarzy]: Blad otwarcia potoku do dyrektora\n");
-            exit(6);
+            exit(1);
         }
         char pid_string[20];
         sprintf(pid_string, "%d", random_lekarz_pid);
         if(write(fifo_fd, pid_string, strlen(pid_string)+1) == -1) {
             perror_red("[Generator lekarzy]: Blad zapisu do potoku\n");
-            exit(7);
+            exit(1);
         }
         close(fifo_fd);
 
@@ -406,7 +370,7 @@ int main()
         {
             execl("./pacjent", "pacjent", NULL);
             perror_red("[Main]: Blad execl dla pacjenta\n");
-            exit(2);
+            exit(1);
         }
 
     }
@@ -456,6 +420,8 @@ int main()
 
 
 int process_exists(const char *process_name) {
+    // funkcja sprawdzająca czy istnieja procesy o danej nazwie
+    
     struct dirent *entry;
     DIR *dp = opendir("/proc");
 
@@ -469,11 +435,11 @@ int process_exists(const char *process_name) {
         if (entry->d_name[0] < '0' || entry->d_name[0] > '9')
             continue;
 
-        // Konstrukcja ścieżki do pliku "/proc/PID/comm"
+        // Konstrukcja ściezki do pliku "/proc/PID/comm"
         char path[256];
         snprintf(path, sizeof(path), "/proc/%s/comm", entry->d_name);
 
-        // Otwieramy plik, który zawiera nazwę procesu
+        // Otwieramy plik, który zawiera nazwe procesu
         FILE *fp = fopen(path, "r");
         if (fp) {
             char name[256];
@@ -495,6 +461,7 @@ int process_exists(const char *process_name) {
 }
 
 void *cleanup_thread(void *arg) {
+    // Funkcja Watku czyszczacego
     int msg_id_wyjscie = *((int *)arg);
     waitSemafor(sem_id, 6, 0);
     while (valueSemafor(sem_id, 5) == 1 && zakoncz_gc == 0) {
@@ -518,4 +485,42 @@ void *cleanup_thread(void *arg) {
     }
     signalSemafor(sem_id, 6);
     return NULL;
+}
+
+void handle_sigint(int sig)
+{
+    keep_generating = 0;
+
+    if (generator_lekarzy_pid > 0)
+    {
+        kill(generator_lekarzy_pid, SIGTERM);
+    }
+
+    if (rejestracja_pid > 0)
+    {
+        kill(rejestracja_pid, SIGTERM);
+    }
+    zakoncz_gc = 1;
+    // Zwolnij zasoby IPC
+    zwolnijSemafor(klucz_wejscia);
+    zwolnijKolejkeKomunikatow(msg_key_rej);
+    zwolnijKolejkeKomunikatow(klucz_wyjscia);
+    zwolnijPamiecWspoldzielona(shm_key_rejestracja);
+    zwolnijPamiecWspoldzielona(shm_key_dostepnosc);//
+    zwolnijKolejkeKomunikatow(msg_key_POZ);
+    zwolnijKolejkeKomunikatow(msg_key_KARDIO);
+    zwolnijKolejkeKomunikatow(msg_key_OKUL);
+    zwolnijKolejkeKomunikatow(msg_key_PED);
+    zwolnijKolejkeKomunikatow(msg_key_MP);
+    usunNiepotrzebnePliki();
+
+    waitpid(dyrektor_pid, NULL, 0);
+    waitpid(generator_lekarzy_pid, NULL, 0);
+    waitpid(rejestracja_pid, NULL, 0);
+
+    wyczyscProcesyPacjentow();
+    pthread_join(tid, NULL);
+    raise(SIGTERM);
+    //printRed("\n[Main]: Zakonczono program po otrzymaniu SIGINT.\n");
+    exit(0);
 }

@@ -188,24 +188,6 @@ void wypiszIOdeslijPacjentow(Lekarz *lekarz, int msg_id) {
                 }
             }
 
-                                    //_______________   WYSLANIE WIADOMOSCI DO WYJSCIA PACJENTOWI _____________________
-                                    
-                                    // Uzyskanie wylacznego dostepu do pliku raport poprzez semafor nr 4
-                                    waitSemafor(sem_id, 4, 0);  // blokada dostepu do pliku "raport"
-                                    // Otwarcie pliku "raport" – tworzy, jesli nie istnieje; tryb "a" dopisuje linie
-                                    FILE *raport = fopen("raport", "a");
-                                    if (raport == NULL) {
-                                        perror_red("[Lekarz]: Blad otwarcia pliku raport\n");
-                                    } else {
-                                        fprintf(raport, "[WypiszIOdeslijPacjentow]: h1Wyslano wiadomosc wyjscia do pacjenta nr %d\n", pozostali[i].id_pacjent);
-                                        fflush(raport);
-                                        fclose(raport);
-                                    }
-                                    signalSemafor(sem_id, 4);  // zwolnienie dostepu do pliku "raport"
-
-                                    // _____________________________________________________________________________________
-
-
         }
         free(pozostali); // Zwalniam pamiec
     }

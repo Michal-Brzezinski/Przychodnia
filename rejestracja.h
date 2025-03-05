@@ -178,10 +178,6 @@ void odeslijPacjentowPrzekroczenieLimitu(int nr_okienka){
 
                     }
                 }
-
-                                    //_______________   WYSLANIE WIADOMOSCI DO WYJSCIA PACJENTOWI _____________________
-                                        fprintf(raport, "[odeslijPacjentowPoPrzekroczeniuLimitu]: 1Wyslano wiadomosc wyjscia do pacjenta nr %d\n", pozostali[i].id_pacjent);
-                                    // _____________________________________________________________________________________
             
                 // Zapisz informację w raporcie
                 fprintf(raport, "Pacjent %d odeslany po osiagnieciu limitu %d\n", pozostali[i].id_pacjent, pozostali[i].id_lekarz);
