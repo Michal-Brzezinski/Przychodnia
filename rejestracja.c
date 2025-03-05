@@ -245,17 +245,17 @@ int main(int argc, char *argv[])
         // Sprawdz liczbe procesow oczekujacych na rejestracje ponownie
         int liczba_procesow = policzProcesy(msg_id_rej);
         printYellow("[Rejestracja - 1 okienko]: Liczba oczekujacych w kolejce do rejestracji:\t%d\n", liczba_procesow);
-        // if ((liczba_procesow > building_max / 2) && (pid_okienka2 < 0)) // jezeli PID < 0 to znaczy ze okno2 jeszcze nie dziala
-        // {
-        //     // Uruchomienie okienka nr 2
-        //     zakoncz2okienko = 0;
-        //     uruchomOkienkoNr2(msg_id_rej, sem_id);
-        // }
-        // else if ((liczba_procesow < (building_max / 3) && (pid_okienka2 > 0)) || zakoncz2okienko == 1)
-        // {
-        //     // Jesli liczba procesow spadla ponizej N/3 lub osiagnieto limit przyjec, zatrzymaj okienko nr 2
-        //     zatrzymajOkienkoNr2();
-        // }
+        if ((liczba_procesow > building_max / 2) && (pid_okienka2 < 0)) // jezeli PID < 0 to znaczy ze okno2 jeszcze nie dziala
+        {
+            // Uruchomienie okienka nr 2
+            zakoncz2okienko = 0;
+            uruchomOkienkoNr2(msg_id_rej, sem_id);
+        }
+        else if ((liczba_procesow < (building_max / 3) && (pid_okienka2 > 0)) || zakoncz2okienko == 1)
+        {
+            // Jesli liczba procesow spadla ponizej N/3 lub osiagnieto limit przyjec, zatrzymaj okienko nr 2
+            zatrzymajOkienkoNr2();
+        }
         
         // Proces rejestracji kontynuuje swoja prace
         
